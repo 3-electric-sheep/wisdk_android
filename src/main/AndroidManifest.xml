@@ -1,0 +1,51 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.welcomeinterruption.wisdk">
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:supportsRtl="true">
+
+        <service
+            android:name="com.welcomeinterruption.wisdk.TesDeviceUpdateService"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <service
+            android:name="com.welcomeinterruption.wisdk.TesGeofenceUpdateService"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <service
+            android:name="com.welcomeinterruption.wisdk.TesGeofenceTransitionsIntentService"
+            android:exported="false" />
+
+        <service
+            android:name="com.welcomeinterruption.wisdk.TesLocationUpdatesIntentService"
+            android:exported="false" />
+
+        <service android:name="com.welcomeinterruption.wisdk.TesFirebaseInstanceIdService">
+            <intent-filter>
+                <action android:name="com.google.firebase.INSTANCE_ID_EVENT" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name="com.welcomeinterruption.wisdk.TesFirebaseMessageService">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
+
+
+        <receiver
+            android:name="com.welcomeinterruption.wisdk.TesLocationUpdatesBroadcastReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.welcomeinterruption.wisdk.locationupdatespendingintent.action.PROCESS_UPDATES" />
+            </intent-filter>
+        </receiver>
+
+
+    </application>
+</manifest>
