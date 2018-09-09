@@ -34,6 +34,8 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+
 public class TesPushMgr {
     public final static String NOTIFICATION_CHANNEL_ID = "wi_default_channel_001";
     public final static String NOTIFICATION_CHANNEL_NAME = "wi_offers";
@@ -93,7 +95,17 @@ public class TesPushMgr {
             notificationManager.createNotificationChannel(new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW));
         }
 
-        this.fcmToken = FirebaseInstanceId.getInstance().getToken();
+        try {
+            if (this.config.fcmSenderId != null && this.config.fcmSenderId.length()> 0){
+                this.fcmToken = FirebaseInstanceId.getInstance().getToken(this.config.fcmSenderId, FirebaseMessaging.INSTANCE_ID_SCOPE);
+            }
+            else {
+                this.fcmToken = FirebaseInstanceId.getInstance().getToken();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to get notification push token "+e.getLocalizedMessage());
+            e.printStackTrace();
+        }
         FirebaseMessaging.getInstance().subscribeToTopic(NOTIFICATION_TOPIC_OFFERS);
         Log.d(TAG, "FCM token:" + this.fcmToken );
 

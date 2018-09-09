@@ -75,24 +75,24 @@ public class TesISO8601DateParser {
     //      ss   = two digits of second (00 through 59)
     //      s    = one or more digits representing a decimal fraction of a second
     //      TZD  = time zone designator (Z or +hh:mm or -hh:mm)
-    public static Date parse( String input ) throws java.text.ParseException {
+    public static Date parse(String input ) throws java.text.ParseException {
 
         //NOTE: SimpleDateFormat uses GMT[-+]hh:mm for the TZ which breaks
         //things a bit.  Before we go on we have to repair this.
-        SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd'T'HH:mm:ssX" );
+        SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd'T'HH:mm:ssZ" );
 
         //this is zero time so we need to add that TZ indicator for
         if ( input.endsWith( "Z" ) ) {
-            input = input.substring( 0, input.length() - 1) + "+00:00";
+            input = input.substring( 0, input.length() - 1) + "+0000";
         }
 
         return df.parse( input );
 
     }
 
-    public static String toString( Date date ) {
+    public static String toString(Date date ) {
 
-        SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd'T'HH:mm:ssX" );
+        SimpleDateFormat df = new SimpleDateFormat( "yyyy-MM-dd'T'HH:mm:ssZ" );
 
         TimeZone tz = TimeZone.getTimeZone( "UTC" );
 

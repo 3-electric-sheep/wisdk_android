@@ -51,7 +51,7 @@ public class TesConfig implements Parcelable, Cloneable {
     public static final long MEM_CACHE_SIZE = 8388608; //8 * 1024 * 1024;
     public static final long DISK_CACHE_SIZE = 20971520; // 20 * 1024 * 1024;
 
-    public static final String  DEVICE_TYPE_GCM = "gcm";
+    public static final String  DEVICE_TYPE_FCM = "gcm";
     public static final String  DEVICE_TYPE_MAIL = "mail";
     public static final String  DEVICE_TYPE_SMS = "sms";
     public static final String  DEVICE_TYPE_WALLET = "ap";
@@ -67,6 +67,7 @@ public class TesConfig implements Parcelable, Cloneable {
     // device push types
     public static final int deviceTypeNone = 0;
     public static final int deviceTypeGCM = 1;
+    public static final int deviceTypeFCM = 1;
     public static final int deviceTypeWallet = 2;
     public static final int deviceTypeMail = 4;
     public static final int deviceTypeSms  = 8;
@@ -173,6 +174,9 @@ public class TesConfig implements Parcelable, Cloneable {
     public boolean requireIdle;
     public boolean requireCharging;
 
+    /** FCM specific bits ***/
+    public String fcmSenderId;
+
 
     public TesConfig(String providerKey) {
          // system config
@@ -200,7 +204,7 @@ public class TesConfig implements Parcelable, Cloneable {
         this.authCredentials = null;
 
         //device config
-        this.deviceTypes = deviceTypeGCM;
+        this.deviceTypes = deviceTypeFCM;
 
         // Job details
         this.delay  = JOB_DEFAULT_DELAY;
@@ -222,6 +226,7 @@ public class TesConfig implements Parcelable, Cloneable {
         this.geoInitialTrigger = GeofencingRequest.INITIAL_TRIGGER_ENTER;
         this.geoLoiteringDelay = LOITERING_DELAY;
 
+        this.fcmSenderId = null;
 
     }
 
@@ -265,6 +270,8 @@ public class TesConfig implements Parcelable, Cloneable {
         geoExpiry = in.readLong();
         geoInitialTrigger = in.readInt();
         geoLoiteringDelay = in.readInt();
+
+        fcmSenderId = in.readString();
     }
 
     public static final Creator<TesConfig> CREATOR = new Creator<TesConfig>() {
@@ -331,6 +338,8 @@ public class TesConfig implements Parcelable, Cloneable {
         dest.writeLong(geoExpiry);
         dest.writeInt(geoInitialTrigger);
         dest.writeInt(geoLoiteringDelay);
+
+        dest.writeString(fcmSenderId);
     }
 
     @Override
@@ -370,6 +379,7 @@ public class TesConfig implements Parcelable, Cloneable {
                 ", geoExpiry=" +  this.geoExpiry +
                 ", geoInitialTrigger=" + this.geoInitialTrigger +
                 ", geoLoiteringDelay=" +  this.geoLoiteringDelay +
+                ", fcmSenderId=" + this.fcmSenderId +
         '}';
     }
 
@@ -409,6 +419,7 @@ public class TesConfig implements Parcelable, Cloneable {
         json.put("geoExpiry", this.geoExpiry);
         json.put("geoInitialTrigger", this.geoInitialTrigger);
         json.put("geoLoiteringDelay",  this.geoLoiteringDelay);
+        json.put("fcmSenderId", this.fcmSenderId);
 
         return json;
     }
@@ -456,6 +467,8 @@ public class TesConfig implements Parcelable, Cloneable {
         this.geoExpiry = json.optLong("geoExpiry", this.geoExpiry);
         this.geoInitialTrigger = json.optInt("geoInitialTrigger", this.geoInitialTrigger);
         this.geoLoiteringDelay = json.optInt("geoLoiteringDelay",  this.geoLoiteringDelay);
+
+        this.fcmSenderId = json.optString("fcmSenderId", this.fcmSenderId);
 
 
     }

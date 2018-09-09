@@ -647,7 +647,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
      */
 
     public void reRegisterServices() {
-        if ((this.config.deviceTypes & TesConfig.deviceTypeGCM) == TesConfig.deviceTypeGCM)
+        if ((this.config.deviceTypes & TesConfig.deviceTypeFCM) == TesConfig.deviceTypeFCM)
             this.pushMgr.registerRemoteNotifications();
             String token = this.pushMgr.getToken();
             if (token != null){
@@ -1353,10 +1353,10 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
 
         JSONArray pushTargets = new JSONArray();
         TesPushInfo pushInfo = null;
-        if ((this.config.deviceTypes & TesConfig.deviceTypeGCM) == TesConfig.deviceTypeGCM){
+        if ((this.config.deviceTypes & TesConfig.deviceTypeFCM) == TesConfig.deviceTypeFCM){
             // setup the push token if its new or we are a new device.
             if (this.pushToken != null){
-                pushInfo = new TesPushInfo(TesConfig.DEVICE_TYPE_GCM, this.pushToken, this.config.getEnvPushProfile());
+                pushInfo = new TesPushInfo(TesConfig.DEVICE_TYPE_FCM, this.pushToken, this.config.getEnvPushProfile());
                 pushTargets.put(pushInfo.toDictionary());
             }
 
