@@ -73,15 +73,13 @@ implementation project(":wisdk")
 // for wisdk
 implementation "com.google.android.gms:play-services-base:15.0.1"
 implementation "com.google.android.gms:play-services-location:15.0.1"
-implementation "com.google.android.gms:play-services-wallet:15.0.1"
-
+implementation "com.google.android.gms:play-services-wallet:16.0.0"
 
 // Firebase dependencies
-implementation "com.google.firebase:firebase-core:16.0.1"
-
+implementation "com.google.firebase:firebase-core:16.0.3"
 
 // Firebase cloud messaging plus badge support
-implementation "com.google.firebase:firebase-messaging:17.1.0"
+implementation "com.google.firebase:firebase-messaging:17.3.1"
 ```
 
 at the bottom of the file add
@@ -109,7 +107,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.1.3'
-        classpath 'com.google.gms:google-services:4.0.1'
+        classpath 'com.google.gms:google-services:4.1.0'
     }
 }
 
@@ -239,7 +237,7 @@ sensitivty of geo regions monitored, how users and devices are created and the t
      TesConfig config = new TesConfig(PROVIDER_KEY);
 
      config.authAutoAuthenticate = true;
-     config.deviceTypes = TesConfig.deviceTypeGCM | TesConfig.deviceTypeWallet;
+     config.deviceTypes = TesConfig.deviceTypeFCM;
      try {
          config.authCredentials = new JSONObject();
          config.authCredentials.put("anonymous_user", true);
@@ -253,6 +251,18 @@ sensitivty of geo regions monitored, how users and devices are created and the t
 
 ```
 
+if you have and application that has multiple push providers, you can also specify the fcm sender id as part of the
+configuration. This will ensure that the fcm registration token gets generatewd for the correct fcm push provider.
+
+```java
+
+        TesConfig config = new TesConfig(PROVIDER_KEY);
+
+        config.authAutoAuthenticate = true;
+        config.deviceTypes = TesConfig.deviceTypeFCM;
+        config.fcmSenderId = "79721494129"; // <-- from the firebird console for your project under cloud messaging
+        ...
+```
 
 ### Listeners
 
