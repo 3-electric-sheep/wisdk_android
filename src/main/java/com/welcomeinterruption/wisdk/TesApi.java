@@ -69,7 +69,7 @@ public class TesApi {
     public interface TesApiListener {
          void onSuccess(JSONObject result);
          void onFailed(JSONObject result);
-         void onOtherError(TesApiException error);
+         void onOtherError(Exception error);
     }
 
     public interface TesApiAuthListener {
@@ -390,7 +390,7 @@ public class TesApi {
             }
 
             @Override
-            public void onOtherError(TesApiException error) {
+            public void onOtherError(Exception error) {
                 inner.onOtherError(error);
             }
 

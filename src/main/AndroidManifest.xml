@@ -11,20 +11,16 @@
         android:supportsRtl="true">
 
         <service
-            android:name="com.welcomeinterruption.wisdk.TesDeviceUpdateService"
+            android:name="com.welcomeinterruption.wisdk.TesLocationUpdateService"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <service
             android:name="com.welcomeinterruption.wisdk.TesGeofenceUpdateService"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
-        <service
-            android:name="com.welcomeinterruption.wisdk.TesGeofenceTransitionsIntentService"
-            android:exported="false" />
+        <service android:name="com.welcomeinterruption.wisdk.TesBootService"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
-        <service
-            android:name="com.welcomeinterruption.wisdk.TesLocationUpdatesIntentService"
-            android:exported="false" />
 
         <service android:name="com.welcomeinterruption.wisdk.TesFirebaseInstanceIdService">
             <intent-filter>
@@ -48,6 +44,16 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name="com.welcomeinterruption.wisdk.TesGeoTransitionBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true"
+        />
+
+        <receiver android:name="com.welcomeinterruption.wisdk.TesBootBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true"
+       />
 
     </application>
 </manifest>

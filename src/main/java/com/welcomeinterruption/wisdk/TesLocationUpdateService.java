@@ -13,44 +13,39 @@
 //  Agreement is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 //  express or implied. See the License Agreement for the specific language governing permissions
 //  and limitations under the License Agreement.
+
 package com.welcomeinterruption.wisdk;
 
-import android.app.job.JobInfo;
-import android.os.Bundle;
-import android.util.Log;
 
-import com.google.android.gms.location.Geofence;
-
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.firebase.jobdispatcher.JobService;
 import com.firebase.jobdispatcher.JobParameters;
 
-public class TesGeofenceUpdateService extends TesJobService {
-    private static final String TAG = TesGeofenceUpdateService.class.getSimpleName();
 
+public class TesLocationUpdateService extends TesJobService {
+    private static final String TAG = TesLocationUpdateService.class.getSimpleName();
 
     @Override
     public boolean doWork(final JobParameters params, JSONObject jsArgs) {
         TesWIApp wi = TesWIApp.manager();
-        wi.sendGeofenceUpdate(jsArgs, new TesApi.TesApiListener() {
+        wi.sendLocationUpdate(jsArgs, new TesApi.TesApiListener() {
             @Override
             public void onSuccess(JSONObject result) {
-                TesGeofenceUpdateService.this.jobFinished(params, false);
+                TesLocationUpdateService.this.jobFinished(params, false);
             }
 
             @Override
             public void onFailed(JSONObject result) {
-                TesGeofenceUpdateService.this.jobFinished(params, false);
+                TesLocationUpdateService.this.jobFinished(params, false);
             }
 
             @Override
             public void onOtherError(Exception error) {
-                TesGeofenceUpdateService.this.jobFinished(params, false);
+                TesLocationUpdateService.this.jobFinished(params, false);
             }
         });
         return true;
     }
-}
+
+};
+

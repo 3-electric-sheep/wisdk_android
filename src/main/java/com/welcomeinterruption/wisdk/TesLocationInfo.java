@@ -32,6 +32,7 @@ public class TesLocationInfo {
     public float accuracy = 0;
     public float speed = 0;
     public float course = 0;
+    public double altitude =0;
     public @NonNull Date fix_timestamp = null;
     public boolean inBackground = false;
     public @Nullable Date arrival=null;
@@ -45,6 +46,7 @@ public class TesLocationInfo {
         this.accuracy = loc.getAccuracy();
         this.speed = loc.getSpeed();
         this.course = loc.getBearing();
+        this.altitude = loc.getAltitude();
         this.fix_timestamp = new Date(loc.getTime());
         this.inBackground = inBackground;
         this.arrival = null;
@@ -57,6 +59,7 @@ public class TesLocationInfo {
         this.accuracy = (float) attributes.optDouble("accuracy", 0);
         this.speed = (float) attributes.optDouble("speed", 0);
         this.course = (float) attributes.optDouble("course", 0);
+        this.altitude = attributes.optDouble("altitude", 0);
         try {
             this.fix_timestamp = TesUtils.dateFromString(attributes.optString("fix_timestamp"));
             this.arrival = TesUtils.dateFromString(attributes.optString("arrival"));
@@ -80,6 +83,7 @@ public class TesLocationInfo {
         obj.put("accuracy", this.accuracy);
         obj.put("speed", this.speed);
         obj.put("course", this.course);
+        obj.put("altitude", this.altitude);
         obj.put("fix_timestamp", TesUtils.stringFromDate(this.fix_timestamp));
         obj.put("arrival", TesUtils.stringFromDate(this.arrival));
         obj.put("departure", TesUtils.stringFromDate(this.departure));
@@ -94,6 +98,7 @@ public class TesLocationInfo {
         obj.put("accuracy", -1.0);
         obj.put("speed", -1.0);
         obj.put("course", -1.0);
+        obj.put("altitude", 0.0);
         obj.put("fix_timestamp", TesUtils.stringFromDate(new Date()));
         obj.put("arrival", null);
         obj.put("departure", null);
@@ -102,5 +107,21 @@ public class TesLocationInfo {
         TesLocationInfo loc  = new TesLocationInfo(obj);
         return loc;
 
+    }
+
+    @Override
+    public String toString() {
+        return "TesLocationInfo{" +
+                "longitude=" + longitude +
+                ", latitude=" + latitude +
+                ", accuracy=" + accuracy +
+                ", speed=" + speed +
+                ", course=" + course +
+                ", altitude=" + altitude +
+                ", fix_timestamp=" + fix_timestamp +
+                ", inBackground=" + inBackground +
+                ", arrival=" + arrival +
+                ", departure=" + departure +
+                '}';
     }
 }

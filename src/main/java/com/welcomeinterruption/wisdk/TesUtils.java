@@ -21,16 +21,15 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
+
 import android.location.Location;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
+
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.TaskStackBuilder;
+
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -44,6 +43,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Utility methods used in this sample.
@@ -224,23 +224,29 @@ class TesUtils {
         return json;
     }
 
-    /**
-     * misc helpers
-     *
-     */
-
-    public  static boolean applicationInForeground(Context context) {
+    static public  boolean isAppOnForeground(Context context) {
+        /**
+         We need to check if app is in foreground otherwise the app will crash.
+         http://stackoverflow.com/questions/8489993/check-android-application-is-in-foreground-or-not
+         **/
         ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> services = activityManager.getRunningAppProcesses();
-        boolean isActivityFound = false;
-
-        if (services.get(0).processName
-                .equalsIgnoreCase(context.getPackageName())) {
-            isActivityFound = true;
+        List<ActivityManager.RunningAppProcessInfo> appProcesses =
+                activityManager.getRunningAppProcesses();
+        if (appProcesses == null) {
+            return false;
         }
+        final String packageName = context.getPackageName();
+        for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
+            if (appProcess.importance ==
+                    ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND &&
+                    appProcess.processName.equals(packageName)) {
+                return true;
 
-        return isActivityFound;
+            }
+        }
+        return false;
     }
+
 
     /**
      * Notification support
@@ -277,109 +283,10 @@ class TesUtils {
     }
 
 
-    /**
-     * -------------------
-     * Debugging functions
-     * -------------------
-     */
 
-    static public void writeDebugInfo(@NonNull TesLocationMgr locMgr, @Nullable Location newLocation)
-
-    {
-        //TODO: fix this
-
-       /* NSLog(@"Location: %@", [newLocation description]);
-        if (!self.config.logLocInfo)
-            return;
-
-        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-        NSString * key  =@"_DEBUG_INFO";
-
-        NSString * mode = (self.backgroundMonitoring) ? @"SigLoc":@"Normal";
-
-        NSNumber * _longitude = @(newLocation.coordinate.longitude);
-        NSNumber *_latitude = @(newLocation.coordinate.latitude);
-        NSDate * _fix_timestamp = newLocation.timestamp;
-        NSDate * _now = [NSDate date];
-
-        NSNumber * _isInBackground = @([UIApplication sharedApplication].applicationState == UIApplicationStateBackground);
-
-        NSNumber * _networkStatus = @([TESWIApp manager].api.networkStatus);
-        NSDictionary * data = @{
-        @"mode": mode,
-        @"longitude": _longitude ,
-        @"latitude": _latitude ,
-        @"fix_timestamp": _fix_timestamp,
-        @"now_timestamp":_now,
-        @"background":_isInBackground,
-        @"network_status":_networkStatus
-    };
-
-        NSArray * debugData = [defaults arrayForKey:key];
-        NSMutableArray * newData = (debugData != nil) ?[[NSMutableArray alloc] initWithArray:debugData] : [[NSMutableArray alloc] initWithCapacity:1];
-    [newData addObject:data];
-
-    [defaults setObject:newData forKey:key];
-    [defaults synchronize]; */
-
+    public static String uuid(){
+       return UUID.randomUUID().toString();
     }
-
-
-    static public void writeDebugMsg(String msg)
-    {
-        // TODO: fix me
-        /*
-            NSLog(@"Msg: %@", msg);
-            if (!self.config.logLocInfo)
-                return;
-
-            NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-            NSString * key  =@"_DEBUG_INFO";
-
-            NSString * mode = (self.backgroundMonitoring) ? @"SigLoc":@"Normal";
-            NSDate * _now = [NSDate date];
-
-            NSNumber * _isInBackground = [NSNumber numberWithBool:([UIApplication sharedApplication].applicationState == UIApplicationStateBackground)];
-
-            NSNumber * _networkStatus = [NSNumber numberWithInteger:[TESWIApp manager].api.networkStatus];
-            NSDictionary * data = @{
-                @"mode": mode,
-                @"now_timestamp":_now,
-                @"background":_isInBackground,
-                @"network_status":_networkStatus,
-                @"msg":msg
-            };
-
-            NSArray * debugData = [defaults arrayForKey:key];
-            NSMutableArray * newData = (debugData != nil) ?[[NSMutableArray alloc] initWithArray:debugData] : [[NSMutableArray alloc] initWithCapacity:1];
-            [newData addObject:data];
-
-            [defaults setObject:newData forKey:key];
-            [defaults synchronize];
-        */
-
-    }
-
-    static public JSONArray readDebugInfo()
-    {
-        // TODO: fix me
-        /*
-        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-        return [defaults arrayForKey:@"_DEBUG_INFO"];
-        */
-        return null;
-    }
-
-    static public void clearDebugInfo()
-    {
-        // TODO: fix me
-        /*
-        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-        [defaults removeObjectForKey:@"_DEBUG_INFO"];
-        [defaults synchronize];
-        */
-    }
-
 
 
 

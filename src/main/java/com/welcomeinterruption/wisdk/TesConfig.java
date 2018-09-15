@@ -101,6 +101,7 @@ public class TesConfig implements Parcelable, Cloneable {
      * Desired permission for locations
      */
     public static final String LOCATION_PERMISSION = Manifest.permission.ACCESS_FINE_LOCATION;
+    public static final String LOCATION_PERMISSION_RATIONALE = "Can we access your location ? We need access so we can send you relevant information and great offers near you";
 
     // key for config
     private static final String KEY_CONFIG_SETTINGS = "TesCurrentConfigSettings";
@@ -134,6 +135,9 @@ public class TesConfig implements Parcelable, Cloneable {
     public long staleLocationThreshold; // in seconds
 
     public boolean logLocInfo; // whether to log debugging info
+
+    public String locationPermissionRationale;
+    public boolean locationSendToSettings; // send user to setting if they have blocked us
 
     /**
      * do automatic authentication if set. uses auth credentials to fill the register/login call
@@ -226,8 +230,10 @@ public class TesConfig implements Parcelable, Cloneable {
         this.geoInitialTrigger = GeofencingRequest.INITIAL_TRIGGER_ENTER;
         this.geoLoiteringDelay = LOITERING_DELAY;
 
-        this.fcmSenderId = null;
+        this.locationPermissionRationale = LOCATION_PERMISSION_RATIONALE;
+        this.locationSendToSettings = true;
 
+        this.fcmSenderId = null;
     }
 
     public TesConfig(){
@@ -487,6 +493,13 @@ public class TesConfig implements Parcelable, Cloneable {
         TesConfig cfg = new TesConfig();
         cfg.fromJSON(cfgStr);
         return cfg;
+    }
+
+    static public String getSavedConfigString(Context context)  {
+        String cfgStr = PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(KEY_CONFIG_SETTINGS, null);
+        return cfgStr;
+
     }
 }
 

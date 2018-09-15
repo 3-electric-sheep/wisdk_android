@@ -15,34 +15,43 @@
 //  and limitations under the License Agreement.
 package com.welcomeinterruption.wisdk;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.location.Location;
-import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 
-
 import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.ImageLoader;
-import com.google.android.gms.common.ConnectionResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
+
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+
+import com.nabinbhandari.android.permissions.PermissionHandler;
+import com.nabinbhandari.android.permissions.Permissions;
+
+
+public class TesWIApp implements
         TesApi.TesApiAuthListener,
         TesPushMgr.TesPushMgrListener {
     /**
@@ -143,6 +152,28 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
      * Listener interface used to tell the host of interesting things that may happen.
      */
     public interface TesWIAppListener {
+        /**
+         * sent as a result of a  permission check
+         *
+         * @param result - the permission result
+         * @param just_blocked - just pressed never ask again
+         *
+         * @return  if result == 'restricted' && just_blocked == false,  return true to call the settings dialog. In all other cases the result is ignored..
+         *
+         **/
+        boolean onLocationPermissionCheck(String result, boolean just_blocked);
+
+        /**
+         * sent on a location update
+         * @param loc - a location object
+         */
+        void onLocationUpdate(TesLocationInfo loc);
+
+        /**
+         * sent on a geo update
+         * @param loc - a location object
+         */
+        void onGeoLocationUpdate(TesLocationInfo loc);
 
         /**
          * sent when authorization has failed (401)
@@ -157,12 +188,11 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
 
         /**
          * sent when authorization is complete
-         *
-         * @param status         TESCallStatus value
+         *  @param status         TESCallStatus value
          * @param responseObject JSONObject response object from call
          * @param error          TesApiException set on error or nill
          **/
-        void onAutoAuthenticate(int status, @Nullable JSONObject responseObject, @Nullable TesApiException error);
+        void onAutoAuthenticate(int status, @Nullable JSONObject responseObject, @Nullable Exception error);
 
         /**
          * sent when a new access token is returned
@@ -213,6 +243,15 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
          *
          */
         void saveWallet(int requestCode, int resultCode, Intent data, String msg);
+
+        /**
+         * Called when we have some sort of error
+         *
+         * @param  errorType : type of error
+         * @param error: desc of error
+         *
+         */
+        public void onError(String errorType, Exception error);
     }
 
     //----------------------------------------------
@@ -238,11 +277,6 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
      * context for class
      */
     private Context wiCtx;
-
-    /**
-     * view id to anchor snackbars too
-     */
-    private int mViewId;
 
     /**
      * class level listener
@@ -275,6 +309,12 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
      **/
     public @Nullable
     TesLocationMgr locMgr;
+
+    /**
+     * Geofence manage for dealing with dynamic geofences
+     */
+    public @Nullable
+    TesGeofenceMgr geofenceMgr;
 
     /**
      * Push createManager for dealing with push notification
@@ -334,6 +374,15 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
     public @Nullable
     String versionToken;
 
+    public @Nullable
+    String locPermission ;
+
+    public @Nullable
+    String locType;
+
+    public boolean isMonitoring;
+
+    public TesLocationInfo lastLoc;
 
     /**
      * set while registering or login
@@ -367,15 +416,26 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
     /**
      * Creates and returns an `TESWIApp` object.
      */
-    public TesWIApp(FragmentActivity fragment, Context context, int viewId) {
-        this.wiActivity = fragment;
+    public TesWIApp(Context context, @Nullable TesWIAppListener listener) {
+        this._init(context, listener);
+    }
+
+    public TesWIApp(Context context) {
+        this._init(context, null);
+    }
+
+    private void _init(Context context, @Nullable TesWIAppListener listener)
+    {
         this.wiCtx = context;
-        this.mViewId = viewId;
+
+        // only used for permission resolution and wallet saving
+        this.wiActivity = null;
 
         this.listener = null;
         this.config = null;
         this.api = null;
         this.locMgr = null;
+        this.geofenceMgr = null;
         this.pushMgr = null;
         this.walletMgr = null;
         this.authUserName = null;
@@ -385,9 +445,18 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
         this.localeToken = null;
         this.timezoneToken = null;
         this.versionToken = null;
+        this.locPermission = "undetermined";
+        this.locType = "always"; //not used - really an IOS thing just copied for consistency
+
+        // are we monitoring
+        this.isMonitoring = false;
+
         this.setAuthenticating(false);
 
-        this.sharedPrefs = this.wiCtx.getSharedPreferences(this.USER_SETTINGS_PREF, Context.MODE_PRIVATE);
+        this.listener = listener;
+        this.lastLoc = null;
+
+        this.sharedPrefs = this.wiCtx.getSharedPreferences(TesWIApp.USER_SETTINGS_PREF, Context.MODE_PRIVATE);
 
         this.setLocaleAndVersionInfo();
     }
@@ -400,11 +469,21 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
      * shared client is a singleton used to make all store related callses
      */
 
-    public static synchronized TesWIApp createManager(FragmentActivity fragment, Context context, int viewId) {
+    public static synchronized TesWIApp createManager(Context context, TesWIAppListener listener) {
         if (wiInstance == null) {
-            wiInstance = new TesWIApp(fragment, context, viewId);
+            wiInstance = new TesWIApp(context, listener);
             wiInitDone = false;
         }
+
+        return wiInstance;
+    }
+
+    public static synchronized TesWIApp createManager(Context context) {
+        if (wiInstance == null) {
+            wiInstance = new TesWIApp(context, null);
+            wiInitDone = false;
+        }
+
         return wiInstance;
     }
 
@@ -424,6 +503,15 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
         return wiInitDone;
     }
 
+
+    /**
+     * Set the activty and view for any ui that needs it (only used in FG)
+     * @param activity set this for permission dialog
+     */
+    public void setActivity(FragmentActivity activity){
+        this.wiActivity = activity;
+    }
+
     /**
      * Start the framework. This initialises location services, boots up the push createManager and authenticates with the wi server
      *
@@ -435,8 +523,12 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
     public boolean start(@NonNull TesConfig config) {
         // check to see if we have already called this and just return.
         if (hasInit()) {
-            this.locMgr.ensureMonitoring();
-            return true;
+            if (!this.isAuthorized() && this.config.authAutoAuthenticate) {
+                this._autoAuthenticate();
+            }
+
+            this._ensureMonitoring();
+            return this.api.isAuthorized();
         }
 
         this.config = config;
@@ -449,8 +541,8 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
         }
 
         // setup the managers
-        this.locMgr = new TesLocationMgr(this.wiActivity, this.wiCtx, this.mViewId, this.config);
-        this.locMgr.listener = this;
+        this.locMgr = new TesLocationMgr(this.wiCtx,  this.config);
+        this.geofenceMgr = new TesGeofenceMgr(this.wiCtx, this.config);
 
         this.pushMgr = new TesPushMgr(this.config.getEnvPushProfile(), this.wiCtx, this.config);
         this.pushMgr.listener = this;
@@ -472,30 +564,11 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
 
         // we self authenticate and pass on the result to any delgate implementing this routine.
         if (!this.isAuthorized() && this.config.authAutoAuthenticate) {
-            this.authenticate(this.config.authCredentials, new TesApi.TesApiListener() {
-                @Override
-                public void onSuccess(JSONObject result) {
-                    if (TesWIApp.this.listener != null) {
-                        TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallSuccessOK, result, null);
-                    }
-                }
-
-                @Override
-                public void onFailed(JSONObject result) {
-                    if (TesWIApp.this.listener != null) {
-                        TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallSuccessFAIL, result, null);
-                    }
-                }
-
-                @Override
-                public void onOtherError(TesApiException error) {
-                    if (TesWIApp.this.listener != null) {
-
-                        TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallError, null, error);
-                    }
-                }
-            });
+            this._autoAuthenticate();
         }
+
+        // see if we have the correct location permission and start monitoring
+        this._checkPermissionAndStartMonitoring();
 
         // If a notification message is tapped, any data accompanying the notification
         // message is available in the intent extras. In this sample the launcher
@@ -506,34 +579,34 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
         //
         // Handle possible data accompanying notification message.
         // [START handle_data_extras]
-        Intent intent = this.wiActivity.getIntent();
-        if (intent.getExtras() != null) {
+        if (this.wiCtx instanceof Activity){
+            Activity activity = (Activity) this.wiCtx;
+            Intent intent = activity.getIntent();
+            if (intent.getExtras() != null) {
 
-            TesDictionary dict = new TesDictionary();
-            Log.d(TAG, "Launched from notification message");
-            for (String key : intent.getExtras().keySet()) {
-                Object value = intent.getExtras().get(key);
-                Log.d(TAG, "Key: " + key + " Value: " + value);
-                dict.put(key, value);
-            }
-            JSONObject data = new JSONObject(dict);
+                TesDictionary dict = new TesDictionary();
+                Log.d(TAG, "Launched from notification message");
+                for (String key : intent.getExtras().keySet()) {
+                    Object value = intent.getExtras().get(key);
+                    Log.d(TAG, "Key: " + key + " Value: " + value);
+                    dict.put(key, value);
+                }
+                JSONObject data = new JSONObject(dict);
 
-            String notifyType = data.optString("notifyType");
-            if (notifyType != null  && notifyType.equalsIgnoreCase(TesWalletMgr.WALLET_NOTIFICATION)){
-                this.walletMgr.saveToAndroid(this.wiActivity, data.optJSONObject("payload"));
-                if (this.listener != null)
-                    this.listener.onWalletNotification(data);
-            }
-            else {
-                if (this.listener != null)
-                    this.listener.onRemoteDataNotification(data);
+                String notifyType = data.optString("notifyType");
+                if (notifyType != null && notifyType.equalsIgnoreCase(TesWalletMgr.WALLET_NOTIFICATION)) {
+                    this.walletMgr.saveToAndroid(activity, data.optJSONObject("payload"));
+                    if (this.listener != null)
+                        this.listener.onWalletNotification(data);
+                } else {
+                    if (this.listener != null)
+                        this.listener.onRemoteDataNotification(data);
+                }
             }
         }
 
-        boolean monitoring = this.locMgr.start(this.config.requireBackgroundLocation);
-
-        setInitDone();
-        return monitoring;
+        TesWIApp.setInitDone();
+        return this.api.isAuthorized();
     }
 
     /**
@@ -545,10 +618,23 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
      */
     public boolean startApi(@NonNull TesConfig config) {
         if (hasInit() && this.api != null){
-            return true;
+            // we self authenticate and pass on the result to any delgate implementing this routine.
+            if (!this.isAuthorized() && this.config.authAutoAuthenticate) {
+                this._autoAuthenticate();
+            }
+            return this.api.isAuthorized();
         }
 
         this.config = config;
+
+        // setup the managers
+        this.locMgr = new TesLocationMgr(this.wiCtx,  this.config);
+        this.geofenceMgr = new TesGeofenceMgr(this.wiCtx, this.config);
+
+        this.pushMgr = new TesPushMgr(this.config.getEnvPushProfile(), this.wiCtx, this.config);
+        this.pushMgr.listener = this;
+
+        this.walletMgr = new TesWalletMgr();
 
         // setup the API caller
         this.api = new TesApi(this.wiCtx);
@@ -558,55 +644,200 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
         this.initTokens();
         this.setLocaleAndVersionInfo();
 
+        // if we are here we are in background and have been started via a broadcast
+        // so connect to the location and geo mananger then setup all the callbacks
+        // normally this is done in the ensure monitoriing call
+        this.geofenceMgr.connect();
+        this.locMgr.connect(true);
+
         Log.i(TAG, String.format("Environment: %s Debug: %b Endpoint: %s", config.environment, config.debug, this.api.getEndpoint()));
 
-        return true;
+        TesWIApp.setInitDone();
+        return this.api.isAuthorized();
+    }
+
+    /**
+     * Auto authenticate a user based on config auth credentials.
+     */
+    private void _autoAuthenticate(){
+        this.authenticate(this.config.authCredentials, new TesApi.TesApiListener() {
+            @Override
+            public void onSuccess(JSONObject result) {
+                if (TesWIApp.this.listener != null) {
+                    TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallSuccessOK, result, null);
+                }
+            }
+
+            @Override
+            public void onFailed(JSONObject result) {
+                if (TesWIApp.this.listener != null) {
+                    TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallSuccessFAIL, result, null);
+                }
+            }
+
+            @Override
+            public void onOtherError(Exception error) {
+                if (error.getCause() != null && error.getCause().getClass().isInstance(VolleyError.class)) {
+                    VolleyError realError = (VolleyError) error.getCause();
+                    if (TesWIApp.this.api.isAuthFailure(realError)) {
+                        if (TesWIApp.this.listener != null) {
+                            NetworkResponse response1 = realError.networkResponse;
+                            if (response1 != null) {
+                                TesWIApp.this.listener.authorizeFailure(response1.statusCode,
+                                        response1.data,
+                                        response1.notModified,
+                                        response1.networkTimeMs,
+                                        response1.headers);
+                            }
+                        }
+                    }
+                }
+
+                if (TesWIApp.this.listener != null) {
+                    TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallError, null, error);
+                }
+            }
+        });
+    }
+
+    /**
+     * Check for lcoation permission and call the permission handler on result
+     */
+
+    private void _checkPermissionAndStartMonitoring() {
+        // permission flags : 'authorized' | 'denied' | 'restricted' | 'undetermined'
+
+        final String[] permissions = {TesConfig.LOCATION_PERMISSION};
+        String rationale = this.config.locationPermissionRationale;
+        Permissions.Options options = new Permissions.Options()
+                .setRationaleDialogTitle("Info")
+                .setSettingsDialogTitle("Warning");
+
+        Permissions.check(this.wiCtx, permissions, rationale, options, new PermissionHandler() {
+            @Override
+            public void onGranted() {
+                TesWIApp.this.locPermission = "authorized";
+                TesWIApp.this._ensureMonitoring();
+                if (TesWIApp.this.listener != null)
+                    TesWIApp.this.listener.onLocationPermissionCheck(TesWIApp.this.locPermission, false);
+            }
+
+            @Override
+            public void onDenied(Context context, ArrayList<String> deniedPermissions) {
+                TesWIApp.this.locPermission = "denied";
+                if (TesWIApp.this.listener != null)
+                    TesWIApp.this.listener.onLocationPermissionCheck(TesWIApp.this.locPermission, false);
+            }
+
+            @Override
+            public boolean onBlocked(Context context, ArrayList<String> blockedList) {
+                TesWIApp.this.locPermission = "restricted";
+                if (TesWIApp.this.listener != null)
+                    return TesWIApp.this.listener.onLocationPermissionCheck(TesWIApp.this.locPermission, false);
+                else
+                    return TesWIApp.this.config.locationSendToSettings;
+            }
+
+            @Override
+            public void onJustBlocked(Context context, ArrayList<String> justBlockedList,
+                                      ArrayList<String> deniedPermissions) {
+                TesWIApp.this.locPermission = "restricted";
+                if (TesWIApp.this.listener != null) {
+                    TesWIApp.this.listener.onLocationPermissionCheck(TesWIApp.this.locPermission, true);
+                }
+
+            }
+        });
 
     }
 
     /**
-     * Start the app location manager only. Used in background services to do location related bits
-     *
-     * @param config   the config object
-     * @param listener the loc manager listener.
-     * @return true for success / false otherwise
+     * start location monitioring for the app.
      */
-    public boolean startLocationMgr(@NonNull TesConfig config, @Nullable TesLocationMgr.TesLocationMgrListener listener) {
-        boolean monitoring = false;
-        if (hasInit() && this.locMgr != null){
-            monitoring = this.locMgr.ensureMonitoring();
-            if (monitoring && listener != null){
-                if (this.locMgr.isSuspended())
-                    listener.onConnectionSuspended(0);
-                else
-                    listener.onConnected(null);
-            }
-            return monitoring;
+    private void _ensureMonitoring() {
+        if (!this.locPermission.equals("authorized")){
+            return;
         }
 
-        this.config = config;
+        if (this.isMonitoring){
+            return;
+        }
 
-        this.initTokens();
-        this.setLocaleAndVersionInfo();
-        
-        // setup just the location manager
-        this.locMgr = new TesLocationMgr(this.wiActivity, this.wiCtx, this.mViewId, this.config);
-        this.locMgr.listener = listener;
-        monitoring = this.locMgr.start(this.config.requireBackgroundLocation);
-        return monitoring;
-    }
+
+        boolean allowBackgroundLocation = (this.locType == "always");
+
+        // we need to get permission info and if we aint got enay
+        this.locMgr.connect(allowBackgroundLocation);
+        this.geofenceMgr.connect();
+
+        this.locMgr.requestLocationUpdates(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful()) {
+                    TesWIApp.this.isMonitoring = true;
+                    TesWIApp.this.locMgr.getLastKnownLocation(new OnCompleteListener<Location>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Location> task) {
+                            if (task.isSuccessful() && task.getResult() != null) {
+                                Location loc = task.getResult();
+
+                                TesLocationInfo lastLoc = new TesLocationInfo(loc, false);
+                                try {
+                                    TesWIApp.this._sendNewLocation(lastLoc, null, false);
+                                } catch (JSONException e) {
+                                    if (TesWIApp.this.listener != null)
+                                        TesWIApp.this.listener.onError("getLastKnownLocation", e);
+                                }
+                            }
+                            else {
+                                Exception e = task.getException();
+                                if (TesWIApp.this.listener != null)
+                                    TesWIApp.this.listener.onError("getLastKnownLocation", e);
+                            }
+                        }
+                    });
+                }
+                else {
+                    Exception e = task.getException();
+                    if (TesWIApp.this.listener != null)
+                        TesWIApp.this.listener.onError("requestLocationUpdate", e);
+                }
+            }
+        });
+    };
 
     /**
-     * Should be added on a request permission callback to ensure that monitoring is restarted if the user gives
-     * permission
-     *
-     * @param requestCode
-     * @param permissions
-     * @param grantResults
+     * Get last known location
      */
-    public void startOnRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        this.locMgr.processRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
+
+    private void getLastKnownLocation() {
+        if (!this.isMonitoring){
+            this._ensureMonitoring();
+            return;
+        }
+
+        TesWIApp.this.locMgr.getLastKnownLocation(new OnCompleteListener<Location>() {
+            @Override
+            public void onComplete(@NonNull Task<Location> task) {
+                if (task.isSuccessful() && task.getResult() != null) {
+                    Location loc = task.getResult();
+                    TesLocationInfo lastLoc = new TesLocationInfo(loc, false);
+                    try {
+                        TesWIApp.this._sendNewLocation(lastLoc, null, false);
+                    } catch (JSONException e) {
+                        if (TesWIApp.this.listener != null)
+                            TesWIApp.this.listener.onError("getLastKnownLocation", e);
+                    }
+                }
+                else {
+                    Exception e = task.getException();
+                    if (TesWIApp.this.listener != null)
+                        TesWIApp.this.listener.onError("getLastKnownLocation", e);
+                }
+            }
+        });
+
+    };
 
     /**
      * returns whether the user has a valid device token
@@ -663,36 +894,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
     @Override
     public void httpAuthFailure(NetworkResponse response) {
         if (this.config.authAutoAuthenticate) {
-            this.authenticate(this.config.authCredentials, new TesApi.TesApiListener() {
-                @Override
-                public void onSuccess(JSONObject result) {
-
-                }
-
-                @Override
-                public void onFailed(JSONObject result) {
-
-                }
-
-                @Override
-                public void onOtherError(TesApiException error) {
-                    if (error.getCause() != null && error.getCause().getClass().isInstance(VolleyError.class)) {
-                        VolleyError realError = (VolleyError) error.getCause();
-                        if (TesWIApp.this.api.isAuthFailure(realError)) {
-                            if (TesWIApp.this.listener != null) {
-                                NetworkResponse response1 = realError.networkResponse;
-                                if (response1 != null) {
-                                    TesWIApp.this.listener.authorizeFailure(response1.statusCode,
-                                            response1.data,
-                                            response1.notModified,
-                                            response1.networkTimeMs,
-                                            response1.headers);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            this._autoAuthenticate();
         } else {
             if (this.listener != null) {
                 this.listener.authorizeFailure(
@@ -712,7 +914,6 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
      * @param inBackground are we running in background atm.
      */
 
-    @Override
     public void sendDeviceUpdate(@Nullable final TesLocationInfo locInfo, final boolean inBackground, final TesApi.TesApiListener listener) throws JSONException {
 
         String path = null;
@@ -745,7 +946,6 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
                         TesWIApp.this.sendDeviceUpdate(locInfo, inBackground, null);
 
                     } else {
-                        TesUtils.writeDebugMsg(String.format("Device token request failed with unknown code: %s  (inbackground %b)", msg, inBackground));
                         if (listener != null)
                             listener.onFailed(result);
                     }
@@ -756,9 +956,8 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
             }
 
             @Override
-            public void onOtherError(TesApiException error) {
+            public void onOtherError(Exception error) {
                 Log.i(TAG, String.format("Request Failed: %s. %s", error.toString(), error.getCause().toString()));
-                TesUtils.writeDebugMsg(String.format("Request failed : %s, %s", error.toString(), error.getCause().toString()));
                 if (listener != null)
                     listener.onOtherError(error);
             }
@@ -771,17 +970,6 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
             path = TES_PATH_GEODEVICE;
             this.api.call(Request.Method.POST, path, parameters, callback, true);
         }
-
-        // TODO: does android have an equivalent
-       /*
-       if (background){
-            __weak __typeof(&*self)weakSelf = self;
-       [self.api setShouldExecuteAsBackgroundTask:task WithExpirationHandler:^{
-                __strong __typeof(&*weakSelf)strongSelf = weakSelf;
-            [strongSelf.locMgr writeDebugMsg:nil msg:[NSString stringWithFormat:@"HTTP Request background task terminated"]];
-            }];
-        }
-        */
 
     }
 
@@ -825,26 +1013,159 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
         }
     }
 
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        this.locMgr.requestLocationUpdates();
-        // ensure that we generate the last known location
-        this.locMgr.sendLastKnownLocation();
 
+    //----------------------------------
+    // handlers for events
+    //----------------------------------
+
+    /**
+     * Called on geofence enter/exit/dwell event
+     * @param geo the geo info
+     * @param listener the api listnerner
+     */
+
+    public void sendGeofenceUpdate(JSONObject geo, final TesApi.TesApiListener listener){
+        Log.i(TAG,String.format("Geo update: %s", geo.toString()));
+        try {
+            if (!geo.getBoolean("success")){
+                if (listener!=null)
+                    listener.onFailed(geo);
+                return;
+            }
+
+            JSONObject data = geo.getJSONObject("data");
+
+            JSONArray regionIdentifiers = data.getJSONArray(TesJobDispatcher.TES_KEY_TRIGGERING_GEOFENCES);
+            boolean didExit = data.getInt(TesJobDispatcher.TES_KEY_GEOFENCE_TRANSITION) ==  Geofence.GEOFENCE_TRANSITION_EXIT;
+            JSONObject geoLoc = data.getJSONObject(TesJobDispatcher.TES_KEY_TRIGGERING_LOCATION);
+
+            final TesLocationInfo lastloc = new TesLocationInfo(geoLoc);
+            if (didExit) {
+                this._sendNewLocation(lastloc, listener, true);
+            }
+
+        }
+        catch (JSONException e){
+            if (listener != null){
+                listener.onOtherError(e);
+            }
+            if (this.listener != null) {
+                this.listener.onError("onGeofenceUpdate", e);
+            }
+        }
     }
 
-    @Override
-    public void onConnectionSuspended(int i) {
-        Log.w(TAG, String.format("Connection Suspended: %d" , i));
+    public void sendLocationUpdate(JSONObject loc, TesApi.TesApiListener listener){
+        Log.i(TAG,String.format("Geo update: %s", loc.toString()));
+        try {
+            if (!loc.getBoolean("success")){
+                if (listener!=null)
+                    listener.onFailed(loc);
+                return;
+            }
+
+            JSONObject data = loc.getJSONObject("data");
+
+            JSONArray locArray = data.getJSONArray(TesJobDispatcher.TES_KEY_LOCATIONS);
+            JSONObject jsonLoc = data.getJSONObject(TesJobDispatcher.TES_KEY_LASTLOCATION);
+
+            final TesLocationInfo lastloc = new TesLocationInfo(jsonLoc);
+            this._sendNewLocation(lastloc, listener, false);
+
+        }
+        catch (JSONException e){
+            if (listener != null){
+                listener.onOtherError(e);
+            }
+            if (this.listener != null) {
+                this.listener.onError("onGeofenceUpdate", e);
+            }
+        }
     }
 
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.e(TAG, String.format("Connection failed: %s" , connectionResult.toString()));
-    }
+    /**
+     * sends location point to server and clears/genrates new geofence around the new location
+     *
+     * @param lastloc - the last location got
+     * @param listener - the listerner
+     * @param isGeo - is it a geo fence trigger
+     */
+    private void _sendNewLocation(final TesLocationInfo lastloc, final TesApi.TesApiListener listener, final boolean isGeo) throws JSONException {
+        // sent the location to the server
+        this.sendDeviceUpdate(lastloc, lastloc.inBackground, new TesApi.TesApiListener() {
+            @Override
+            public void onSuccess(JSONObject result) {
+                TesWIApp.this.lastLoc = lastloc;
+                if (TesWIApp.this.listener != null) {
+                    if (isGeo) {
+                        TesWIApp.this.listener.onGeoLocationUpdate(lastLoc);
+                    }
+                    else {
+                        TesWIApp.this.listener.onLocationUpdate(lastloc);
+                    }
+                }
 
-    @Override
-    public void onError(@Nullable String msg) {
+                if (listener != null){
+                    listener.onSuccess(result);
+                }
+            }
+
+            @Override
+            public void onFailed(JSONObject result) {
+                if (TesWIApp.this.listener != null) {
+                    try {
+                        String err = result.getString("msg");
+                        TesWIApp.this.listener.onError("onGeofenceUpdate", new TesApiException(err));
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                };
+                if (listener != null){
+                    listener.onFailed(result);
+                }
+            }
+
+            @Override
+            public void onOtherError(Exception error) {
+                if (TesWIApp.this.listener != null) {
+                    TesWIApp.this.listener.onError("onGeofenceUpdate", error);
+                }
+                if (listener != null){
+                    listener.onOtherError(error);
+                }
+            }
+        });
+
+        // clear existing geofence and create a new one.
+        this.clearGeofences(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (!task.isSuccessful()) {
+                    Exception exc = task.getException();
+                    if (listener != null) {
+                        listener.onOtherError(exc);
+                    }
+                    if (TesWIApp.this.listener != null) {
+                        TesWIApp.this.listener.onError("onGeofenceUpdate: clearGeofence", exc);
+                    }
+                }
+            }
+        });
+
+        this.addGeofence(lastloc.latitude, lastloc.longitude, this.config.geoRadius,  "gf_"+TesUtils.uuid(), new OnCompleteListener<Void>(){
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (!task.isSuccessful()) {
+                    Exception exc = task.getException();
+                    if (listener != null) {
+                        listener.onOtherError(exc);
+                    }
+                    if (TesWIApp.this.listener != null) {
+                        TesWIApp.this.listener.onError("onGeofenceUpdate: addGeofence", exc);
+                    }
+                }
+            }
+        } );
 
     }
 
@@ -852,14 +1173,71 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
     // Geofencing calls
     //----------------------
 
-    public void addGeofence(double latitude, double longitude)
-    {
-        this.locMgr.addGeofence(latitude, longitude);
+
+    /**
+     * Adds geofences. This method should be called after the user has granted the location
+     * permission.
+     */
+    public void addGeofence(double lat, double lng, float radius, String ident, final OnCompleteListener<Void> listener) {
+        List<Geofence> geofenceList = new ArrayList<>();
+        geofenceList.add(this.geofenceMgr.buildGeofence(lat,lng,radius,ident));
+
+        this.geofenceMgr.addGeofences(geofenceList, new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (!task.isSuccessful()) {
+                    Exception exc = task.getException();
+                    if (TesWIApp.this.listener != null)
+                        TesWIApp.this.listener.onError("addGeofence", exc);
+                }
+
+                if (listener != null)
+                    listener.onComplete(task);
+            }
+        });
     }
 
-    public void removeGeofence()
-    {
-        this.locMgr.removeGeofence();
+    /**
+     * Removes geofences by id. This method should be called after the user has granted the location
+     * permission.
+     */
+    public void removeGeofence(String ident, final OnCompleteListener<Void> listener) {
+        List<String> idList = new ArrayList<>();
+        idList.add(ident);
+
+        this.geofenceMgr.removeGeofences(idList, new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (!task.isSuccessful()) {
+                    Exception exc = task.getException();
+                    if (TesWIApp.this.listener != null)
+                        TesWIApp.this.listener.onError("removeGeofence", exc);
+                }
+
+                if (listener != null)
+                    listener.onComplete(task);
+            }
+        });
+    }
+
+    /**
+     * Removes all geofences. This method should be called after the user has granted the location
+     * permission.
+     */
+    public void clearGeofences(final OnCompleteListener<Void> listener) {
+        this.geofenceMgr.clearGeofences(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (!task.isSuccessful()) {
+                    Exception exc = task.getException();
+                    if (TesWIApp.this.listener != null)
+                        TesWIApp.this.listener.onError("clearGeofences", exc);
+                }
+
+                if (listener != null)
+                    listener.onComplete(task);
+            }
+        });
     }
 
     //-----------------------
@@ -924,7 +1302,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
            }
 
            @Override
-           public void onOtherError(TesApiException error) {
+           public void onOtherError(Exception error) {
                // something went wrong don't do anything - could be bas connection
                inner.onOtherError(error);
            }
@@ -937,22 +1315,22 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
            this.sendDeviceUpdate(null, false, new TesApi.TesApiListener() {
                @Override
                public void onSuccess(JSONObject result) {
-                   TesWIApp.this.locMgr.ensureMonitoring();
+                   TesWIApp.this._ensureMonitoring();
                }
 
                @Override
                public void onFailed(JSONObject result) {
-                   TesWIApp.this.locMgr.ensureMonitoring();
+                   TesWIApp.this._ensureMonitoring();
                }
 
                @Override
-               public void onOtherError(TesApiException error) {
-                   TesWIApp.this.locMgr.ensureMonitoring();
+               public void onOtherError(Exception error) {
+                   TesWIApp.this._ensureMonitoring();
                }
            });
        }
        else {
-           this.locMgr.ensureMonitoring();
+           this._ensureMonitoring();
        }
 
    }
@@ -1000,7 +1378,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
             }
 
             @Override
-            public void onOtherError(TesApiException error) {
+            public void onOtherError(Exception error) {
                 TesWIApp.this.setAuthenticating(false);
                 if (listener != null)
                     listener.onOtherError(error);
@@ -1694,7 +2072,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
             }
 
             @Override
-            public void onOtherError(TesApiException error) {
+            public void onOtherError(Exception error) {
                 if (listener != null)
                     listener.onOtherError(error);
             }
@@ -1760,7 +2138,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
                }
 
                @Override
-               public void onOtherError(TesApiException error) {
+               public void onOtherError(Exception error) {
                    if (listener != null)
                        listener.onOtherError(error);
                }
@@ -1809,7 +2187,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
            }
 
            @Override
-           public void onOtherError(TesApiException error) {
+           public void onOtherError(Exception error) {
                if (listener != null)
                    listener.onOtherError(error);
            }
@@ -1874,7 +2252,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
                }
 
                @Override
-               public void onOtherError(TesApiException error) {
+               public void onOtherError(Exception error) {
                    if (listener != null)
                        listener.onOtherError(error);
                }
@@ -1980,7 +2358,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
            }
 
            @Override
-           public void onOtherError(TesApiException error) {
+           public void onOtherError(Exception error) {
                if (listener != null)
                    listener.onOtherError(error);
            }
@@ -2038,7 +2416,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
            }
 
            @Override
-           public void onOtherError(TesApiException error) {
+           public void onOtherError(Exception error) {
                if (listener != null)
                    listener.onOtherError(error);
            }
@@ -2162,7 +2540,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
             }
 
             @Override
-            public void onOtherError(TesApiException error) {
+            public void onOtherError(Exception error) {
                 if (listener != null)
                     listener.onOtherError(error);
 
@@ -2203,7 +2581,7 @@ public class TesWIApp implements TesLocationMgr.TesLocationMgrListener,
            }
 
            @Override
-           public void onOtherError(TesApiException error) {
+           public void onOtherError(Exception error) {
                if (listener != null)
                    listener.onOtherError(error);
 
