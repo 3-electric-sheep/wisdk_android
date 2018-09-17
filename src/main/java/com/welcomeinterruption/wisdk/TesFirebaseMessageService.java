@@ -101,6 +101,20 @@ public class TesFirebaseMessageService extends FirebaseMessagingService {
         // Also if you intend on generating your own notifications as a result of a received FCM
         // message, here is where that should be initiated. See sendNotification method below.
     }
+
+    @Override
+    public void onNewToken(String token) {
+        super.onNewToken(token);
+
+        Log.d(TAG, "Refreshed token: " + token);
+
+        final Intent intent = new Intent(TesPushMgr.NOTIFICATION_PUSH_RECEIVER);
+
+        final LocalBroadcastManager broadcastManager = LocalBroadcastManager.getInstance(this);
+        intent.putExtra(TesPushMgr.NOTIFICATION_TYPE_KEY, TesPushMgr.NOTIFICATION_TYPE_REFRESH);
+        intent.putExtra(TesPushMgr.NOTIFICATION_TOKEN_KEY,token);
+        broadcastManager.sendBroadcast(intent);
+    }
     // [END receive_message]
 
 

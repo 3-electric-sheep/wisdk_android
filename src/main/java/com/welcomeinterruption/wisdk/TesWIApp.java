@@ -23,6 +23,7 @@ import android.graphics.Bitmap;
 import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.BuildConfig;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 
@@ -1011,6 +1012,12 @@ public class TesWIApp implements
             if (this.listener != null)
                 this.listener.onRemoteNotification(data);
         }
+    }
+
+    @Override
+    public void onPushMgrError(Exception e) {
+        if (this.listener != null)
+            this.listener.onError("PushManagerError", e);
     }
 
 
@@ -2107,7 +2114,7 @@ public class TesWIApp implements
        boolean changed = false;
        int idx = this.findExclusionIndex(evt_cat, exclusion_list);
        if (idx >= 0){
-           exclusion_list.remove(idx);
+           exclusion_list = TesUtils.removeElement(exclusion_list, idx);
            changed = true;
        }
 
@@ -2214,13 +2221,13 @@ public class TesWIApp implements
        boolean changed = false;
        int idx = TesUtils.findJsonArrayIndex(evt_cat, notify_list);
        if (idx >=0){
-           notify_list.remove(idx);
+           notify_list = TesUtils.removeElement(notify_list, idx);
            changed = true;
        }
        else {
            idx = TesUtils.findJsonArrayIndex("*",notify_list);
            if (idx >=0){
-               notify_list.remove(idx);
+               notify_list = TesUtils.removeElement(notify_list, idx);
                changed = true;
            }
        }
@@ -2388,7 +2395,7 @@ public class TesWIApp implements
                typ = obj.getString("object_type");
                oid = obj.getString("object_id");
                if (oid.equals(rid) && typ.equals("poi")){
-                   following.remove(i);
+                   following = TesUtils.removeElement(following, i);
                    break;
                }
            } catch (JSONException e) {
@@ -2492,7 +2499,7 @@ public class TesWIApp implements
             if (zone != null) {
                 for (int i = 0; i < watchZones.length(); i++) {
                     if (watchZones.getJSONObject(i).getString("name").equals(oldName)) {
-                        watchZones.remove(i);
+                        watchZones = TesUtils.removeElement(watchZones, i);
                         break;
                     }
                 }
@@ -2551,16 +2558,15 @@ public class TesWIApp implements
     }
 
    public void removeWatchZonenamed(String name , final TesApi.TesApiListener listener) throws JSONException {
-
-       final JSONArray watchZones = this.getUserSettingJsonArray("watch_zones");
-       if (watchZones == null)
+        JSONArray watchZones = this.getUserSettingJsonArray("watch_zones");
+        if (watchZones == null)
            return; // nothing to do
 
        int zoneIdx = this.findZoneIndex(name, watchZones);
        if (zoneIdx < 0)
            return; // nothing to do
 
-       watchZones.remove(zoneIdx);
+       final JSONArray watchZonesInner = TesUtils.removeElement(watchZones, zoneIdx);
 
        JSONObject params = new JSONObject();
        params.put("watch_zones", watchZones);
@@ -2568,7 +2574,7 @@ public class TesWIApp implements
        this.updateSettings(params, new TesApi.TesApiListener() {
            @Override
            public void onSuccess(JSONObject result) {
-               TesWIApp.this.setUserSetting("watch_zones", watchZones);
+               TesWIApp.this.setUserSetting("watch_zones", watchZonesInner);
 
                if (listener != null)
                    listener.onSuccess(result);

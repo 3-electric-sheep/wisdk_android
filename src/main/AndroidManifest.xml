@@ -21,13 +21,6 @@
         <service android:name="com.welcomeinterruption.wisdk.TesBootService"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
-
-        <service android:name="com.welcomeinterruption.wisdk.TesFirebaseInstanceIdService">
-            <intent-filter>
-                <action android:name="com.google.firebase.INSTANCE_ID_EVENT" />
-            </intent-filter>
-        </service>
-
         <service
             android:name="com.welcomeinterruption.wisdk.TesFirebaseMessageService">
             <intent-filter>

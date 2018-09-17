@@ -22,13 +22,18 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.json.JSONException;
@@ -59,6 +64,7 @@ public class TesPushMgr {
         public void onRefreshToken(String token);
         public void onDataMsg(JSONObject data);
         public void onNotificationMsg(JSONObject data);
+        public void onPushMgrError(Exception e);
     };
 
     /**
@@ -94,20 +100,6 @@ public class TesPushMgr {
             NotificationManager notificationManager = this.mCtx.getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW));
         }
-
-        try {
-            if (this.config.fcmSenderId != null && this.config.fcmSenderId.length()> 0){
-                this.fcmToken = FirebaseInstanceId.getInstance().getToken(this.config.fcmSenderId, FirebaseMessaging.INSTANCE_ID_SCOPE);
-            }
-            else {
-                this.fcmToken = FirebaseInstanceId.getInstance().getToken();
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to get notification push token "+e.getLocalizedMessage());
-            e.printStackTrace();
-        }
-        FirebaseMessaging.getInstance().subscribeToTopic(NOTIFICATION_TOPIC_OFFERS);
-        Log.d(TAG, "FCM token:" + this.fcmToken );
 
         this.tokenReceiver = new BroadcastReceiver() {
             @Override
@@ -155,6 +147,41 @@ public class TesPushMgr {
 
         LocalBroadcastManager.getInstance(this.mCtx).registerReceiver(tokenReceiver,
                 new IntentFilter(NOTIFICATION_PUSH_RECEIVER));
+
+        final String senderId = this.config.fcmSenderId;
+        if (senderId != null && senderId.length()> 0){
+            // get token via sender id
+            TesGetFCMSenderTokenTask task = new TesGetFCMSenderTokenTask(this.mCtx, this);
+            task.execute(senderId);
+        }
+        else {
+            // Get default token for app
+            FirebaseInstanceId.getInstance().getInstanceId()
+                    .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                            if (!task.isSuccessful()) {
+                                Log.w(TAG, "getInstanceId failed", task.getException());
+                                if (TesPushMgr.this.listener != null) {
+                                    TesPushMgr.this.listener.onPushMgrError(task.getException());
+                                }
+                                return;
+                            }
+                            // Get new Instance ID token
+                            TesPushMgr.this.fcmToken = task.getResult().getToken();
+                            Log.d(TAG, "FCM token:" + TesPushMgr.this.fcmToken );
+
+                            final Intent intent = new Intent(TesPushMgr.NOTIFICATION_PUSH_RECEIVER);
+
+                            final LocalBroadcastManager broadcastManager = LocalBroadcastManager.getInstance(TesPushMgr.this.mCtx);
+                            intent.putExtra(TesPushMgr.NOTIFICATION_TYPE_KEY, TesPushMgr.NOTIFICATION_TYPE_REFRESH);
+                            intent.putExtra(TesPushMgr.NOTIFICATION_TOKEN_KEY,TesPushMgr.this.fcmToken );
+                            broadcastManager.sendBroadcast(intent);
+                        }
+                    });
+        }
+
+        FirebaseMessaging.getInstance().subscribeToTopic(NOTIFICATION_TOPIC_OFFERS);
     }
 
     public String getToken()

@@ -282,12 +282,19 @@ class TesUtils {
         notificationManager.notify(0 /* ID of notification */, notificationBuilder.build());
     }
 
-
-
-    public static String uuid(){
+   public static String uuid(){
        return UUID.randomUUID().toString();
     }
 
-
+   public static JSONArray removeElement(JSONArray arr, int index) throws JSONException{
+        JSONArray output = new JSONArray();
+        int len = arr.length();
+        for (int i = 0; i < len; i++)   {
+            if (i != index) {
+                output.put(arr.get(i));
+            }
+        }
+        return output;
+    }
 
 }
