@@ -60,7 +60,7 @@ public class TesConfig implements Parcelable, Cloneable {
     // default job scheduler params
     private static final boolean JOB_DEFAULT_REQUIRE_CHARGING = false;
     private static final int JOB_DEFAULT_DELAY = 0;
-    private static final int JOB_DEFAULT_DEADLINE = 5 * 60; /* 5 min */
+    private static final int JOB_DEFAULT_DEADLINE = 2 * 60; /* 2 min */
     private static final int JOB_DEFAULT_NETWORK_TYPE = JobInfo.NETWORK_TYPE_ANY;
     private static final boolean JOB_DEFAULT_REQUIRE_IDLE = false ;
 
@@ -90,7 +90,7 @@ public class TesConfig implements Parcelable, Cloneable {
      * The max time before batched results are delivered by location services. Results may be
      * delivered sooner than this interval.
      */
-    private static final long MAX_WAIT_TIME = UPDATE_INTERVAL * 3; // Every 15 minutes.
+    private static final long MAX_WAIT_TIME = UPDATE_INTERVAL * 2; // Every 10 minutes.
 
     /**
      * Priority of location requests

@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.TimeZone;
 
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -54,7 +56,8 @@ import com.nabinbhandari.android.permissions.Permissions;
 
 public class TesWIApp implements
         TesApi.TesApiAuthListener,
-        TesPushMgr.TesPushMgrListener {
+        TesPushMgr.TesPushMgrListener,
+        TesActivityLifecycleHandler.LifecycleListener {
     /**
      * User settings
      */
@@ -115,6 +118,8 @@ public class TesWIApp implements
     private final static String TES_PATH_PRODUCT_LIST = "products/itunes";
 
     private final static String TES_PATH_ADDRESS_LOOKUP = "providers/address";
+
+    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
     /**
      * Error codes returned by the server
@@ -528,7 +533,7 @@ public class TesWIApp implements
                 this._autoAuthenticate();
             }
 
-            this._ensureMonitoring();
+            this.getLastKnownLocation();
             return this.api.isAuthorized();
         }
 
@@ -570,6 +575,12 @@ public class TesWIApp implements
 
         // see if we have the correct location permission and start monitoring
         this._checkPermissionAndStartMonitoring();
+
+        // register lifecycle if we are an activity and ensure playservices is cool
+        if (this.wiCtx instanceof Activity){
+            Activity act = (Activity) this.wiCtx;
+            act.getApplication().registerActivityLifecycleCallbacks(new TesActivityLifecycleHandler(this));
+        }
 
         // If a notification message is tapped, any data accompanying the notification
         // message is available in the intent extras. In this sample the launcher
@@ -655,6 +666,27 @@ public class TesWIApp implements
 
         TesWIApp.setInitDone();
         return this.api.isAuthorized();
+    }
+
+    /**
+     * Check the device to make sure it has the Google Play Services APK. If
+     * it doesn't, display a dialog that allows users to download the APK from
+     * the Google Play Store or enable it in the device's system settings.
+     *
+     * @param  activity - the current activity
+     * @return  true = play services installed and happy,  play services not installed dialog shown if necessary
+     */
+    public boolean checkPlayServices(Activity activity) {
+        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
+        int resultCode = apiAvailability.isGooglePlayServicesAvailable(this.wiCtx);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (apiAvailability.isUserResolvableError(resultCode)) {
+                apiAvailability.getErrorDialog(activity, resultCode, PLAY_SERVICES_RESOLUTION_REQUEST)
+                        .show();
+            }
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -1018,6 +1050,32 @@ public class TesWIApp implements
     public void onPushMgrError(Exception e) {
         if (this.listener != null)
             this.listener.onError("PushManagerError", e);
+    }
+
+
+    //------------------------------------
+    // Lifecycle handlers
+    //-----------------------------------
+
+
+    @Override
+    public void onApplicationStopped() {
+        Log.i(TAG, "*** STOPPED ***");
+    }
+
+    @Override
+    public void onApplicationStarted() {
+        Log.i(TAG, "*** STARTED ***");
+    }
+
+    @Override
+    public void onApplicationPaused() {
+        Log.i(TAG, "@@@ Paused @@@@");
+    }
+
+    @Override
+    public void onApplicationResumed() {
+        Log.i(TAG, "@@@ Resume @@@@");
     }
 
 
