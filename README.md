@@ -32,6 +32,27 @@ It also requires, the following libraries as dependencies
 There are a few important steps to get out of the way when integrating Wi with your app for the first time.
 Follow these instructions carefully to ensure that you will have a smooth development experience.
 
+### Maven Library module (recommended)
+**Step 1.** Add the JitPack repository to your build file
+
+Add it in your root build.gradle at the end of repositories:
+```
+	allprojects {
+		repositories {
+			...
+			maven { url 'https://www.jitpack.io' }
+		}
+	}
+	
+```
+**Step 2.** Add the dependency to your app level gradle file
+```
+	dependencies {
+		implementation 'com.github.3-electric-sheep:wisdk_android:1.0.2'
+	}
+	
+```
+That's it.
 
 ### Git Submodule library
 The WiSDK library is distributed in souce code form and can be added to an existing library using a git submodule.
