@@ -727,7 +727,8 @@ public class TesWIApp implements
                 }
 
                 if (TesWIApp.this.listener != null) {
-                    TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallError, null, error);
+                    JSONObject resp = new JSONObject();
+                    TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallError, resp, error);
                 }
             }
         });
@@ -1332,13 +1333,19 @@ public class TesWIApp implements
            } catch (JSONException e) {
                e.printStackTrace();
            }
-
        }
 
        if (params.has("user_name")){
            haveUser = true;
        }
 
+       if (!params.has("provider_id")){
+           try {
+               params.put("provider_id", this.config.providerKey);
+           } catch (JSONException e) {
+               e.printStackTrace();
+           }
+       }
 
        if (haveUser){
           this.loginUser(params, this._wrapLoginListener(listener));
