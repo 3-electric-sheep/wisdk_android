@@ -77,6 +77,7 @@ public class TesWIApp implements
     private final static String TES_PATH_LIVE_EVENTS_REVIEWS = "live-events/%s/reviews";
     private final static String TES_PATH_LIVE_EVENTS_CREATE_REVIEW = "live-events/%s/reviews";
     private final static String TES_PATH_EVENTS_REVIEWS = "events/%s/reviews";
+    private final static String TES_PATH_EVENTS_ALERTED = "/geodevice/%s/alerted-events";
 
     private final static String TES_PATH_SEARCH_LIVE_EVENTS = "geopos/%s,%s/live-events";
 
@@ -1580,7 +1581,8 @@ public class TesWIApp implements
      **/
 
    public void listLiveEvents(JSONObject params, TesApi.TesApiListener listener) {
-       this.api.call(Request.Method.GET, TES_PATH_LIVE_EVENTS, params, listener, true);
+       String path = String.format(TES_PATH_LIVE_EVENTS, this.deviceToken);
+       this.api.call(Request.Method.GET, path, params, listener, true);
    }
 
     /**
@@ -1597,9 +1599,7 @@ public class TesWIApp implements
    {
        String path = String.format(TES_PATH_SEARCH_LIVE_EVENTS, location.getLongitude(), location.getLatitude());
        this.api.call(Request.Method.GET, path, params, listener, true);
-
    }
-
 
     /**
      List all acknowledged live events
@@ -1622,6 +1622,17 @@ public class TesWIApp implements
    public void listFollowedLiveEvents(JSONObject params, TesApi.TesApiListener listener) {
        this.api.call(Request.Method.GET, TES_PATH_LIST_LIVE_EVENTS_FOLLOW , params, listener, true);
    }
+
+    /**
+     List all followed live events
+
+     @param params Parameters to the list live events call
+     @param listener the code block to call on successful completion
+     **/
+    public void listAlertedEvents(JSONObject params, TesApi.TesApiListener listener) {
+        String path = String.format(TES_PATH_EVENTS_ALERTED, this.deviceToken);
+        this.api.call(Request.Method.GET, path , params, listener, true);
+    }
 
     /**
 
@@ -1826,6 +1837,11 @@ public class TesWIApp implements
             pushInfo = new TesPushInfo(TesConfig.DEVICE_TYPE_SMS, TesConfig.SMS_PROFILE, "");
             pushTargets.put(pushInfo.toDictionary());
         }
+
+       if ((this.config.deviceTypes & TesConfig.deviceTypePassive) == TesConfig.deviceTypePassive){
+           pushInfo = new TesPushInfo(TesConfig.DEVICE_TYPE_PASSIVE, TesConfig.PASSIVE_PROFILE, "");
+           pushTargets.put(pushInfo.toDictionary());
+       }
 
         int tgtCount = pushTargets.length();
         if (tgtCount == 1) {

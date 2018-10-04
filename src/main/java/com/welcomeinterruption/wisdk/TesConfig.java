@@ -40,13 +40,14 @@ public class TesConfig implements Parcelable, Cloneable {
     public static final String PROD_SERVER = "https://api.3-electric-sheep.com";
     public static final String PROD_PUSH_PROFILE = "snapitup_prod";
 
-    public static final String TEST_SERVER = "http://testapi.3-electric-sheep.com";
+    public static final String TEST_SERVER = "https://testapi.3-electric-sheep.com";
     public static final String TEST_PUSH_PROFILE = "snapitup_dev";
 
     public static final String WALLET_OFFER_CLASS = "wi_offer_class";
     public static final String WALLET_PROFILE = "email";
     public static final String MAIL_PROFILE = "email";
     public static final String SMS_PROFILE = "phone";
+    public static final String PASSIVE_PROFILE = "virtual";
 
     public static final long MEM_CACHE_SIZE = 8388608; //8 * 1024 * 1024;
     public static final long DISK_CACHE_SIZE = 20971520; // 20 * 1024 * 1024;
@@ -56,6 +57,7 @@ public class TesConfig implements Parcelable, Cloneable {
     public static final String  DEVICE_TYPE_SMS = "sms";
     public static final String  DEVICE_TYPE_WALLET = "ap";
     public static final String  DEVICE_TYPE_MULTIPLE = "multiple";
+    public static final String  DEVICE_TYPE_PASSIVE = "passive";
 
     // default job scheduler params
     private static final boolean JOB_DEFAULT_REQUIRE_CHARGING = false;
@@ -71,6 +73,7 @@ public class TesConfig implements Parcelable, Cloneable {
     public static final int deviceTypeWallet = 2;
     public static final int deviceTypeMail = 4;
     public static final int deviceTypeSms  = 8;
+    public static final int deviceTypePassive = 16;
 
     // location constants
     /**

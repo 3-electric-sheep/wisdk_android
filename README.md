@@ -258,7 +258,7 @@ sensitivty of geo regions monitored, how users and devices are created and the t
      TesConfig config = new TesConfig(PROVIDER_KEY);
 
      config.authAutoAuthenticate = true;
-     config.deviceTypes = TesConfig.deviceTypeFCM;
+     config.deviceTypes = TesConfig.deviceTypeFCM | TesConfig.deviceTypePassive;
      try {
          config.authCredentials = new JSONObject();
          config.authCredentials.put("anonymous_user", true);
@@ -280,7 +280,7 @@ configuration. This will ensure that the fcm registration token gets generatewd 
         TesConfig config = new TesConfig(PROVIDER_KEY);
 
         config.authAutoAuthenticate = true;
-        config.deviceTypes = TesConfig.deviceTypeFCM;
+        config.deviceTypes = TesConfig.deviceTypeFCM | TesConfig.deviceTypePassive;
         config.fcmSenderId = "79721494129"; // <-- from the firebird console for your project under cloud messaging
         ...
 ```

@@ -44,18 +44,23 @@
       <sourceFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/generated/res/rs/androidTest/debug" type="java-test-resource" />
       <sourceFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/generated/res/resValues/androidTest/debug" type="java-test-resource" />
       <sourceFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/generated/source/apt/test/debug" isTestSource="true" generated="true" />
+      <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/annotations" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/attr" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/check-manifest" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/classes" />
+      <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/extractedTypedefs" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/incremental" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/intermediate-jars" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/javaPrecompile" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/jniLibs" />
+      <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/library_and_local_jars_jni" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/manifests" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/packaged-aidl" />
+      <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/packaged-classes" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/packagedAssets" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/packaged_res" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/public_res" />
+      <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/publish-proguard" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/res" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/rs" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/shaders" />
