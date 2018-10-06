@@ -28,50 +28,6 @@ It also requires, the following libraries as dependencies
 * Google Play Sevices
 * Google Firebase Cloud Services
 
-## SDK Installation and Setup
-There are a few important steps to get out of the way when integrating Wi with your app for the first time.
-Follow these instructions carefully to ensure that you will have a smooth development experience.
-
-### Maven Library module (recommended)
-**Step 1.** Add the JitPack repository to your build file
-
-Add it in your root build.gradle at the end of repositories:
-```
-	allprojects {
-		repositories {
-			...
-			maven { url 'https://www.jitpack.io' }
-		}
-	}
-	
-```
-**Step 2.** Add the dependency to your app level gradle file
-```
-	dependencies {
-		implementation 'com.github.3-electric-sheep:wisdk_android:1.0.3'
-	}
-	
-```
-That's it.
-
-### Git Submodule library
-The WiSDK library is distributed in souce code form and can be added to an existing library using a git submodule.
-
-To add the WiSDK to an Android application goto the root of the app folder tree and via a terminal window type in the following command
-
-```bash
-git submodule add https://3es-Integrator:3zrUfjvVBW@github.com/3-electric-sheep/wisdk_android wisdk
-```
-
-This will add the library in source code form to your application.
-
-***NOTE**: if you are cloning the example repository or anything that has submodules, some older versions of 
-git require the --recurse-submodules option*
-
-```bash
-git clone --recurse-submodules
-```
-
 ### Install FCM 
 
 Install googles Firebase cloud messaging (FCM)as described in the documentation here:-
@@ -80,40 +36,13 @@ https://firebase.google.com/docs/cloud-messaging/android/client
 
 Ensure that a valid google-service.json file is available at the top level of your app.
 
-***NOTE**: WiSDK shares many of the dependancies FCM .  It is very important that
+**NOTE**: WiSDK shares many of the dependancies FCM .  It is very important that
 all the play services dependancies are the same version and all the FCM dependancies match. It is safe
 to update the WiSDK dependances to match the version of FCM to use.
 
-### App level build.gradle file
-
-In the app level build.gradle file add the following to the dependancies section:
-
-```
-implementation project(":wisdk")
-
-// for wisdk
-implementation "com.google.android.gms:play-services-base:15.0.1"
-implementation "com.google.android.gms:play-services-location:15.0.1"
-implementation "com.google.android.gms:play-services-wallet:16.0.0"
-
-// Firebase dependencies
-implementation "com.google.firebase:firebase-core:16.0.3"
-
-// Firebase cloud messaging plus badge support
-implementation "com.google.firebase:firebase-messaging:17.3.1"
-```
-
-at the bottom of the file add
-
-
-```gradle
-apply plugin: 'com.google.gms.google-services'
-```
-
-***NOTE:** the WiSDK compileSdkVersion and targetSdkVersion is set to 26. This will soon be the minimum level
+**NOTE:** the WiSDK compileSdkVersion and targetSdkVersion is set to 26. This will soon be the minimum level
 that apps published on the Play store can use.
-                     
-                     
+                                         
 ### Top Level build.gradle
 
 In the top level build.gradle file ensure that the google and jcenter repositories are specified and 
@@ -139,6 +68,102 @@ allprojects {
     }
 }
 ```
+
+## SDK Installation and Setup
+There are a few important steps to get out of the way when integrating Wi with your app for the first time.
+Follow these instructions carefully to ensure that you will have a smooth development experience.
+
+### Option 1 Maven Library module (recommended)
+**Step 1.** Add the JitPack repository to your build file
+
+Add it in your root build.gradle at the end of repositories:
+
+```
+	allprojects {
+		repositories {
+			...
+			maven { url 'https://www.jitpack.io' }
+		}
+	}
+	
+```
+**Step 2.** Add the dependency to your app level gradle file
+
+```
+dependencies {
+    // for wisdk
+    implementation "com.google.android.gms:play-services-base:15.0.1"
+    implementation "com.google.android.gms:play-services-location:15.0.1"
+    implementation "com.google.android.gms:play-services-wallet:16.0.0"
+
+    // Firebase dependencies
+    implementation "com.google.firebase:firebase-core:16.0.3"
+
+    // Firebase cloud messaging plus badge support
+    implementation "com.google.firebase:firebase-messaging:17.3.1"
+    
+    // the wi SDK    
+    implementation 'com.github.3-electric-sheep:wisdk_android:1.0.4'
+}
+	
+```
+
+at the bottom of the file add
+
+```gradle
+apply plugin: 'com.google.gms.google-services'
+```
+
+That's it.
+
+### Option 2 - Git Submodule library
+The WiSDK library is distributed in souce code form and can be added to an existing library using a git submodule.
+
+To add the WiSDK to an Android application goto the root of the app folder tree and via a terminal window type in the following command
+
+**Step 1**
+```bash
+git submodule add https://github.com/3-electric-sheep/wisdk_android wisdk
+```
+
+This will add the library in source code form to your application.
+
+***NOTE**: if you are cloning the example repository or anything that has submodules, some older versions of 
+git require the --recurse-submodules option*
+
+```bash
+git clone --recurse-submodules
+```
+
+**Step 2**
+
+In the app level build.gradle file add the following to the dependancies section:
+
+```
+dependances }
+    implementation project(":wisdk")
+
+    // for wisdk
+    implementation "com.google.android.gms:play-services-base:$playServicesVersion"
+    implementation "com.google.android.gms:play-services-location:$playServicesVersion"
+    implementation "com.google.android.gms:play-services-wallet:16.0.0"
+
+    // Firebase dependencies
+    implementation "com.google.firebase:firebase-core:16.0.3"
+
+    // Firebase cloud messaging plus badge support
+    implementation "com.google.firebase:firebase-messaging:17.3.1"
+}
+
+```
+
+at the bottom of the file add
+
+```gradle
+apply plugin: 'com.google.gms.google-services'
+```
+
+that's it!
 
 ### WiSDK Level build.gradle
 
@@ -219,28 +244,39 @@ public class MainActivity extends AppCompatActivity  {
      
      @Override
      protected void onCreate(Bundle savedInstanceState) {
-         super.onCreate(savedInstanceState);
-         setContentView(R.layout.activity_main);
- 
-         TesWIApp.createManager(this, this, R.layout.activity_main);
-         TesConfig config = new TesConfig(PROVIDER_KEY);
- 
-         config.authAutoAuthenticate = true;
-         config.deviceTypes = TesConfig.deviceTypeGCM | TesConfig.deviceTypeWallet;
-         try {
-             config.authCredentials = new JSONObject();
-             config.authCredentials.put("anonymous_user", true);
-         }
-         catch (JSONException e){
-             Log.e(TAG, "Failed to create authentication details: "+e.getLocalizedMessage());
-         }
- 
-         config.testPushProfile = "wisdk-example-fcm";
-         config.pushProfile = "wisdk-example-fcm";
- 
-         TesWIApp app = TesWIApp.manager();
-         app.listener = this;
-         app.start(config);
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        
+        TesWIApp app = TesWIApp.createManager(this);
+        TesConfig config = new TesConfig(PROVIDER_KEY);
+
+        if (BuildConfig.DEBUG) {
+            config.environment = TesConfig.ENV_TEST;
+        }
+        else {
+            config.environment = TesConfig.ENV_PROD;
+        }
+
+        config.authAutoAuthenticate = true;
+        config.deviceTypes = TesConfig.deviceTypeFCM | TesConfig.deviceTypePassive;
+        config.fcmSenderId = "955521662890"; // from the firebird console
+        try {
+            config.authCredentials = new JSONObject();
+            config.authCredentials.put("anonymous_user", true);
+        }
+        catch (JSONException e){
+            Log.e(TAG, "Failed to create authentication details: "+e.getLocalizedMessage());
+        }
+
+        config.testPushProfile = "wisdk-example-fcm";
+        config.pushProfile = "wisdk-example-fcm";
+
+        if (!app.checkPlayServices(this)) {
+            Log.i(TAG, "Play service not available or out of date - location monitoring will not work");
+        }
+
+        app.listener = this;
+        app.start(config);
      }
 }
 ```
@@ -309,12 +345,11 @@ If interfacing to an external system you can also enter
          config.authCredentials.put("email", "test@acme.com");
          
          JSONObject prog_attr = new JSONObject();
-         prog_attr.put("name", "3esDemoProgram"); // setup as part of the provider (name is required)
          prog_attr.put("gender", "M");
-         prog_attr.put("dob", "1964-12-04");
+         prog_attr.put("DOB", "1964-12-04");
          
          config.authCredentials.put("external_id", ”1234567890”);  // external system user/member id)
-         config.authCredentials.put("program_att", prog_attr)
+         config.authCredentials.put("attributes", prog_attr)
      }
      catch (JSONException e){
          Log.e(TAG, "Failed to create authentication details: "+e.getLocalizedMessage());
@@ -373,7 +408,14 @@ this protocol is defined in TESWiApp as follows:-
  * Listener interface used to tell the host of interesting things that may happen.
  */
 public interface TesWIAppListener {
-
+    /**
+     * Called when starup is complete and you have successfully been authorized. Will
+     * at the end of start or if you are unauthorized, at the end of the authorize process
+     * regardless of whehter you are authorized or not.
+     *
+     * @param isAuthorized - returns whether we are successfully authorized or not
+     */
+    void onStartupComplete(boolean isAuthorized);
     /**
      * sent when authorization has failed (401)
      *
@@ -481,6 +523,66 @@ notification management and all sorts of communication to/from the Wi Servers.
 NOTE: start asks for necessary permissions, registers FCM push tokens and uses https to authenticate and communicate with the WI servers. It is asyncrohnous and
 in nature.
 
+
+If you have implemented the TesWIApp.TesWIAppListener interface you can use the onStartupComplete callback to do processing once WI has authenticated with our servers
+An example follows where user details are set
+
+```java
+    @Override
+    public void onStartupComplete(boolean isAuthorized) {
+        Log.i(TAG, "Startup complete");
+        
+        if (!isAuthorized)
+            return;
+
+        TesWIApp app = TesWIApp.manager();
+
+        JSONObject params = new JSONObject();
+        try {
+            params.put("first_name", "John");
+            params.put("last_name", "Smith");
+            params.put("email", "jsmith@3es.com.au");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        app.updateAccountProfile(params, new TesApi.TesApiListener() {
+            @Override
+            public void onSuccess(JSONObject result) {
+                // the call succeeded returns a dictionary with a data field containing the updated user info
+                // a  dictionary containing success=1 and a data field with updated profile info.
+                JSONObject data = null;
+                try {
+                    data = result.getJSONObject("data");
+                    Log.i(TAG, String.format("--> updateAccountProfile Success %s", data));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void onFailed(JSONObject result) {
+                // the call made it to the server but there was a logical failure (ie. invalid data)
+                // A dictionary containing success=0, and a field called msg which contains the error string
+                String msg = null;
+                try {
+                    msg = result.getString("msg");
+                    Log.i(TAG, String.format("--> updateAccountProfile Fail %s", msg));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void onOtherError(Exception error) {
+                // a network or other transport type error
+                Log.i(TAG, String.format("--> updateAccountProfile error: %s", error.getLocalizedMessage()));
+
+            }
+        });
+    }
+```
+
 ### Push notification format
 
 A push notification is created when a device enter in an active radius of an events geofence.  The event detail determines
@@ -585,12 +687,157 @@ The remainder of the WiSDK wraps the Wi Rest based API. This API can be used to
 * setting up inclusions/exclusions for event notification
 * searching for events
 
-### Permissions and capabilites
-
 
 ## API documentation
 
-For further API documentation, clone the repo and open the doc/html/index.html file
+
+### User management
+```java
+   public void registerUser(JSONObject params, final TesApi.TesApiListener listener);
+   public void loginUser(JSONObject params,  TesApi.TesApiListener listener;
+
+```
+
+### Account profile calls
+```java
+   public void getAccountProfile(TesApi.TesApiListener listener) ;
+   public void updateAccountProfile(JSONObject params, TesApi.TesApiListener listener);
+   public void updateAccountProfilePassword(String password, String oldPassword, TesApi.TesApiListener listener);
+   public void updateAccountSettings(JSONObject params, TesApi.TesApiListener listener) throws JSONException;
+  
+   public void uploadImageForProfile(Bitmap image, TesApi.TesApiListener listener);
+   public void readProfileImage(ImageLoader.ImageListener listener);
+```
+
+### Event details
+```java
+   public void listLiveEvents(JSONObject params, TesApi.TesApiListener listener);
+   public void listSearchEvents(JSONObject params, Location location , TesApi.TesApiListener listener);
+   public void listAcknowledgedLiveEvents(JSONObject params, TesApi.TesApiListener listener);
+   public void listFollowedLiveEvents(JSONObject params, TesApi.TesApiListener listener);
+   public void listAlertedEvents(JSONObject params, TesApi.TesApiListener listener);
+```
+#### List Alerted Events
+List all alerted live events for this device. A list of events are returned in the data field of the result JSON.
+
+```
+- (void) listAlertedEvents: (nullable NSDictionary *)params
+              onCompletion:(TESApiCallback)completionBlock;
+```
+
+Parameter Name | Description
+-----------| -----------
+params | Optional filters to apply to the list live events call
+listener | the code block to call on successful completion
+
+Valid key / value filters for this call are:-
+
+Field | Value
+------|------
+notification_type |type of notification since a device can have multiple push targets. Valid values are:-<br/><ul><li>'apn' - apple push notification</li><li>'gcm' - google cloud message<li>'mail' - email</li><li>'sms' - sms</li><li>'test' - test</li><li>'pkpass' - apple wallet</li><li>'ap' - google wallet</li><li>'passive' - a virtual push (for people that don't want to set notification on)</li><br>
+pending| Whether the alert is pending true/false (default true)
+relative_start| the relative start date to get events from. This can be a number suffixed by d (days) h (hours) m (minutes) s (sections) - eg. 20d - give me the events for the last 20 days
+start|start record for results (default = 0)
+limit|number of records to return (default = -1 - all)
+sort_field|sort on field (default = alerted)
+sort_desc|sort decending (default = True)
+
+
+An example to return all events in last 20 days is given below
+
+```java
+    TesWIApp app = TesWIApp.manager();
+
+    params = new JSONObject();
+    try {
+        params.put("relative_start", "20d");
+
+    } catch (JSONException e) {
+        e.printStackTrace();
+    }
+
+    app.listAlertedEvents(params, new TesApi.TesApiListener() {
+        @Override
+        public void onSuccess(JSONObject result) {
+            // the call succeeded returns a dictionary with a data field containing the updated user info
+            // a  dictionary containing success=1 and a data field with updated profile info.
+            JSONArray data = null;
+            try {
+                data = result.getJSONArray("data");
+                Log.i(TAG, String.format("--> listAlertedEvents Success %s", data));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void onFailed(JSONObject result) {
+            // the call made it to the server but there was a logical failure (ie. invalid data)
+            // A dictionary containing success=0, and a field called msg which contains the error string
+            String msg = null;
+            try {
+                msg = result.getString("msg");
+                Log.i(TAG, String.format("--> listAlertedEvents Fail %s", msg));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void onOtherError(Exception error) {
+            // a network or other transport type error
+            Log.i(TAG, String.format("--> listAlertedEvents error: %s", error.getLocalizedMessage()));
+
+        }
+```
+
+### Updating event status
+
+```java
+   public void updateEventAck(String eventId, boolean ack, TesApi.TesApiListener listener) throws JSONException;
+   public void updateEventEnacted(String eventId, boolean enacted, TesApi.TesApiListener listener) throws JSONException;
+```
+
+### Provider details
+```java
+    public void getProvider(TesApi.TesApiListener listener) throws JSONException;
+    public void listPlacesOfInterestForProvider(JSONObject params, TesApi.TesApiListener listener);
+    public void listLiveEventsForProvider(JSONObject params, TesApi.TesApiListener listener);
+    public void listEventsForProvider(JSONObject params, TesApi.TesApiListener listener);
+```
+
+### Event filtering
+```java
+    // exclusion support
+    public JSONObject getExclusions();
+    public int findExclusionIndex(String name, JSONArray exclusions);
+    public void excludeEventType(String exc_type, String exc_cat, final TesApi.TesApiListener listener) throws JSONException;
+    public void includeEventType(String evt_type, String evt_cat, final TesApi.TesApiListener listener) throws JSONException;
+
+    // notify support
+    public void allowNotifyEventType(String  evt_type, String  evt_cat, final TesApi.TesApiListener listener) throws JSONException;
+    public void disallowNotifyEventType(String  evt_type, String evt_cat, final TesApi.TesApiListener listener) throws JSONException;
+    public boolean isAllowNotify(String evt_type, String evt_cat);
+
+    // poi following support
+    public boolean isFollowingPoi(String rid);
+    public void addFollowPoi(String rid, final TesApi.TesApiListener listener) throws JSONException ;
+    public void removeFollowPoi(String rid, final TesApi.TesApiListener listener) throws JSONException;
+
+    // watch zones
+    public JSONArray getWatchZones();
+    public JSONObject findZone(String name, JSONArray watchZones);
+    public int findZoneIndex(String name, JSONArray watchZones);
+    public JSONObject getWatchZoneNamed(String name);
+    public boolean addWatchZoneNamed(String  name,
+                                     float distance,
+                                     String  location,
+                                     Location latLng,
+                                     JSONObject oldZoneInfo,
+                                     final TesApi.TesApiListener listener) throws JSONException;
+   public void removeWatchZonenamed(String name , final TesApi.TesApiListener listener) throws JSONException;
+
+```
 
 ## Example
 

@@ -160,6 +160,15 @@ public class TesWIApp implements
      */
     public interface TesWIAppListener {
         /**
+         * Called when starup is complete and you have successfully been authorized. Will
+         * at the end of start or if you are unauthorized, at the end of the authorize process
+         * regardless of whehter you are authorized or not.
+         *
+         * @param isAuthorized - returns whether we are successfully authorized or not
+         */
+        void onStartupComplete(boolean isAuthorized);
+
+        /**
          * sent as a result of a  permission check
          *
          * @param result - the permission result
@@ -528,13 +537,19 @@ public class TesWIApp implements
      **/
 
     public boolean start(@NonNull TesConfig config) {
+        boolean deferOnComplete = false;
+
         // check to see if we have already called this and just return.
         if (hasInit()) {
             if (!this.isAuthorized() && this.config.authAutoAuthenticate) {
-                this._autoAuthenticate();
+                deferOnComplete = true;
+                this._autoAuthenticate(true);
             }
 
             this.getLastKnownLocation();
+            if (!deferOnComplete && this.listener != null)
+                this.listener.onStartupComplete(this.api.isAuthorized());
+
             return this.api.isAuthorized();
         }
 
@@ -571,7 +586,8 @@ public class TesWIApp implements
 
         // we self authenticate and pass on the result to any delgate implementing this routine.
         if (!this.isAuthorized() && this.config.authAutoAuthenticate) {
-            this._autoAuthenticate();
+            deferOnComplete = true;
+            this._autoAuthenticate(true);
         }
 
         // see if we have the correct location permission and start monitoring
@@ -615,10 +631,22 @@ public class TesWIApp implements
                     if (this.listener != null)
                         this.listener.onRemoteDataNotification(data);
                 }
+
+                try {
+                    String event_id = data.getString("event_id");
+                    this.updateEventAck(event_id, true, null);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
             }
         }
 
         TesWIApp.setInitDone();
+
+        if (!deferOnComplete && this.listener != null)
+            this.listener.onStartupComplete(this.api.isAuthorized());
+
         return this.api.isAuthorized();
     }
 
@@ -633,7 +661,7 @@ public class TesWIApp implements
         if (hasInit() && this.api != null){
             // we self authenticate and pass on the result to any delgate implementing this routine.
             if (!this.isAuthorized() && this.config.authAutoAuthenticate) {
-                this._autoAuthenticate();
+                this._autoAuthenticate(false);
             }
             return this.api.isAuthorized();
         }
@@ -692,13 +720,16 @@ public class TesWIApp implements
 
     /**
      * Auto authenticate a user based on config auth credentials.
+     * @param callStartup
      */
-    private void _autoAuthenticate(){
+    private void _autoAuthenticate(final boolean callStartup){
         this.authenticate(this.config.authCredentials, new TesApi.TesApiListener() {
             @Override
             public void onSuccess(JSONObject result) {
                 if (TesWIApp.this.listener != null) {
                     TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallSuccessOK, result, null);
+                    if (callStartup)
+                        TesWIApp.this.listener.onStartupComplete(TesWIApp.this.isAuthorized());
                 }
             }
 
@@ -706,6 +737,9 @@ public class TesWIApp implements
             public void onFailed(JSONObject result) {
                 if (TesWIApp.this.listener != null) {
                     TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallSuccessFAIL, result, null);
+                    if (callStartup)
+                        TesWIApp.this.listener.onStartupComplete(TesWIApp.this.isAuthorized());
+
                 }
             }
 
@@ -723,6 +757,9 @@ public class TesWIApp implements
                                         response1.networkTimeMs,
                                         response1.headers);
                             }
+                            if (callStartup)
+                                TesWIApp.this.listener.onStartupComplete(TesWIApp.this.isAuthorized());
+
                         }
                     }
                 }
@@ -730,6 +767,9 @@ public class TesWIApp implements
                 if (TesWIApp.this.listener != null) {
                     JSONObject resp = new JSONObject();
                     TesWIApp.this.listener.onAutoAuthenticate(TesApi.TESCallError, resp, error);
+                    if (callStartup)
+                        TesWIApp.this.listener.onStartupComplete(TesWIApp.this.isAuthorized());
+
                 }
             }
         });
@@ -929,7 +969,7 @@ public class TesWIApp implements
     @Override
     public void httpAuthFailure(NetworkResponse response) {
         if (this.config.authAutoAuthenticate) {
-            this._autoAuthenticate();
+            this._autoAuthenticate(false);
         } else {
             if (this.listener != null) {
                 this.listener.authorizeFailure(
@@ -1032,6 +1072,14 @@ public class TesWIApp implements
             if (this.listener != null)
                 this.listener.onRemoteDataNotification(data);
         }
+
+
+        try {
+            String event_id = data.getString("event_id");
+            this.updateEventAck(event_id, true, null);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -1045,6 +1093,13 @@ public class TesWIApp implements
         else {
             if (this.listener != null)
                 this.listener.onRemoteNotification(data);
+        }
+
+        try {
+            String event_id = data.getString("event_id");
+            this.updateEventAck(event_id, true, null);
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
     }
 

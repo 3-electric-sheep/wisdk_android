@@ -60,7 +60,6 @@
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/packagedAssets" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/packaged_res" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/public_res" />
-      <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/publish-proguard" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/res" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/rs" />
       <excludeFolder url="file://$MODULE_DIR$/../wisdk_android_example/wisdk/build/intermediates/shaders" />

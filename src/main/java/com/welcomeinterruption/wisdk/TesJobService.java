@@ -105,6 +105,12 @@ public abstract class TesJobService extends JobService {
         if (wi == null) {
             wi = TesWIApp.createManager(getApplicationContext(), new TesWIApp.TesWIAppListener() {
                 @Override
+                public void onStartupComplete(boolean isAuthorized) {
+                    Log.i(TAG, "BG OnStartupComplete");
+
+                }
+
+                @Override
                 public boolean onLocationPermissionCheck(String result, boolean just_blocked) {
                     if (result == "restricted" && !just_blocked)
                         return true;
