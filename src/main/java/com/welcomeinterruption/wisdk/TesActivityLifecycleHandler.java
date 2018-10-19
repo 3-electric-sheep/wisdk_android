@@ -52,6 +52,11 @@ public class TesActivityLifecycleHandler implements Application.ActivityLifecycl
          * Called right after the application has been resumed (come to the foreground).
          */
         void onApplicationResumed();
+
+        /**
+         * Callled when the activity is destroyed
+         */
+        void onActivityDestroyed(Activity activity);
     }
 
     private LifecycleListener listener;
@@ -107,6 +112,9 @@ public class TesActivityLifecycleHandler implements Application.ActivityLifecycl
 
     @Override
     public void onActivityDestroyed(Activity activity) {
+        if (listener != null){
+            listener.onActivityDestroyed(activity);
+        }
     }
 
 }

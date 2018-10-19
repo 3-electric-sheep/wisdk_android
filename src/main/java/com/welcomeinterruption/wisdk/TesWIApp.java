@@ -16,6 +16,7 @@
 package com.welcomeinterruption.wisdk;
 
 import android.app.Activity;
+import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -24,7 +25,6 @@ import android.location.Location;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.BuildConfig;
-import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 
 import com.android.volley.NetworkResponse;
@@ -92,12 +92,13 @@ public class TesWIApp implements
 
     private final static String TES_PATH_LIVE_EVENTS_RUD = "live-events/%s";
     private final static String TES_PATH_EVENTS_RUD = "events/%s";
-    private final static String TES_PATH_LIVE_EVENTS_ACK = "live-events/%s/ack";
-    private final static String TES_PATH_LIST_LIVE_EVENTS_ACK = "live-events/acknowledged";
-    private final static String TES_PATH_LIST_LIVE_EVENTS_FOLLOW = "live-events/following";
 
-    private final static String TES_PATH_LIVE_EVENTS_ENACTED = "live-events/%s/enact";
-    private final static String TES_PATH_LIVE_EVENTS_SHARE = "live-events/%s/share";
+    private final static String TES_PATH_EVENTS_ACK = "events/%s/ack";
+    private final static String TES_PATH_LIST_EVENTS_ACK = "events/acknowledged";
+    private final static String TES_PATH_LIST_EVENTS_FOLLOW = "events/following";
+
+    private final static String TES_PATH_EVENTS_ENACTED = "events/%s/enact";
+    private final static String TES_PATH_EVENTS_SHARE = "events/%s/share";
 
     private final static String TES_PATH_POI = "providers/%s/poi";
     private final static String TES_PATH_PLACE_RUD = "poi/%s";
@@ -288,7 +289,7 @@ public class TesWIApp implements
     /**
      * Activity that the class is bound too
      */
-    private FragmentActivity wiActivity;
+    private Activity wiActivity;
     /**
      * context for class
      */
@@ -432,17 +433,29 @@ public class TesWIApp implements
     /**
      * Creates and returns an `TESWIApp` object.
      */
-    public TesWIApp(Context context, @Nullable TesWIAppListener listener) {
-        this._init(context, listener);
+    public TesWIApp(Activity activity, @Nullable TesWIAppListener listener) {
+        this._init(activity.getApplicationContext(), activity, listener);
     }
 
-    public TesWIApp(Context context) {
-        this._init(context, null);
+    public TesWIApp(Service service, @Nullable TesWIAppListener listener) {
+        this._init(service.getApplicationContext(), null, listener);
     }
 
-    private void _init(Context context, @Nullable TesWIAppListener listener)
+    // we want the context ones to be private to our package only
+    // end users of the sdk should use either the service or activity this
+
+    private TesWIApp(Context context, @Nullable TesWIAppListener listener) {
+        this._init(context, null, listener);
+    }
+
+    private TesWIApp(Context context) {
+        this._init(context, null,null);
+    }
+
+    private void _init(Context context, @Nullable Activity activity, @Nullable TesWIAppListener listener)
     {
         this.wiCtx = context;
+        this.wiActivity = activity;
 
         // only used for permission resolution and wallet saving
         this.wiActivity = null;
@@ -485,7 +498,53 @@ public class TesWIApp implements
      * shared client is a singleton used to make all store related callses
      */
 
-    public static synchronized TesWIApp createManager(Context context, TesWIAppListener listener) {
+    public static synchronized TesWIApp createManager(Activity activity, TesWIAppListener listener) {
+        if (wiInstance == null) {
+            wiInstance = new TesWIApp(activity, listener);
+            wiInitDone = false;
+        }
+        else {
+            wiInstance.setActivity(activity);
+        }
+
+        return wiInstance;
+    }
+
+    public static synchronized TesWIApp createManager(Service service, TesWIAppListener listener) {
+        if (wiInstance == null) {
+            wiInstance = new TesWIApp(service, listener);
+            wiInitDone = false;
+        }
+
+        return wiInstance;
+    }
+
+
+    public static synchronized TesWIApp createManager(Activity activity) {
+        if (wiInstance == null) {
+            wiInstance = new TesWIApp(activity, null);
+            wiInitDone = false;
+        }
+        else {
+            wiInstance.setActivity(activity);
+        }
+
+        return wiInstance;
+    }
+
+    public static synchronized TesWIApp createManager(Service service) {
+        if (wiInstance == null) {
+            wiInstance = new TesWIApp(service, null);
+            wiInitDone = false;
+        }
+
+        return wiInstance;
+    }
+
+    // we want the context ones to be private to our package only
+    // end users of the sdk should use either the service or activity this
+
+    private static synchronized TesWIApp createManager(Context context, TesWIAppListener listener) {
         if (wiInstance == null) {
             wiInstance = new TesWIApp(context, listener);
             wiInitDone = false;
@@ -494,7 +553,7 @@ public class TesWIApp implements
         return wiInstance;
     }
 
-    public static synchronized TesWIApp createManager(Context context) {
+    private static synchronized TesWIApp createManager(Context context) {
         if (wiInstance == null) {
             wiInstance = new TesWIApp(context, null);
             wiInitDone = false;
@@ -524,7 +583,7 @@ public class TesWIApp implements
      * Set the activty and view for any ui that needs it (only used in FG)
      * @param activity set this for permission dialog
      */
-    public void setActivity(FragmentActivity activity){
+    public void setActivity(Activity activity){
         this.wiActivity = activity;
     }
 
@@ -545,10 +604,12 @@ public class TesWIApp implements
                 deferOnComplete = true;
                 this._autoAuthenticate(true);
             }
+            this.check_for_notification();
 
             this.getLastKnownLocation();
             if (!deferOnComplete && this.listener != null)
                 this.listener.onStartupComplete(this.api.isAuthorized());
+
 
             return this.api.isAuthorized();
         }
@@ -594,11 +655,21 @@ public class TesWIApp implements
         this._checkPermissionAndStartMonitoring();
 
         // register lifecycle if we are an activity and ensure playservices is cool
-        if (this.wiCtx instanceof Activity){
-            Activity act = (Activity) this.wiCtx;
-            act.getApplication().registerActivityLifecycleCallbacks(new TesActivityLifecycleHandler(this));
+        if (this.wiActivity != null){
+            this.wiActivity.getApplication().registerActivityLifecycleCallbacks(new TesActivityLifecycleHandler(this));
         }
 
+        this.check_for_notification();
+
+        TesWIApp.setInitDone();
+
+        if (!deferOnComplete && this.listener != null)
+            this.listener.onStartupComplete(this.api.isAuthorized());
+
+        return this.api.isAuthorized();
+    }
+
+    private void check_for_notification(){
         // If a notification message is tapped, any data accompanying the notification
         // message is available in the intent extras. In this sample the launcher
         // intent is fired when the notification is tapped, so any accompanying data would
@@ -608,9 +679,8 @@ public class TesWIApp implements
         //
         // Handle possible data accompanying notification message.
         // [START handle_data_extras]
-        if (this.wiCtx instanceof Activity){
-            Activity activity = (Activity) this.wiCtx;
-            Intent intent = activity.getIntent();
+        if (this.wiActivity != null){
+            Intent intent = this.wiActivity.getIntent();
             if (intent.getExtras() != null) {
 
                 TesDictionary dict = new TesDictionary();
@@ -624,7 +694,7 @@ public class TesWIApp implements
 
                 String notifyType = data.optString("notifyType");
                 if (notifyType != null && notifyType.equalsIgnoreCase(TesWalletMgr.WALLET_NOTIFICATION)) {
-                    this.walletMgr.saveToAndroid(activity, data.optJSONObject("payload"));
+                    this.walletMgr.saveToAndroid(this.wiActivity, data.optJSONObject("payload"));
                     if (this.listener != null)
                         this.listener.onWalletNotification(data);
                 } else {
@@ -642,14 +712,7 @@ public class TesWIApp implements
             }
         }
 
-        TesWIApp.setInitDone();
-
-        if (!deferOnComplete && this.listener != null)
-            this.listener.onStartupComplete(this.api.isAuthorized());
-
-        return this.api.isAuthorized();
     }
-
     /**
      * Start the app but only doing enough to kick the api so we can make network calls. This
      * is typically called when a pending intent starts
@@ -1064,7 +1127,9 @@ public class TesWIApp implements
     public void onDataMsg(JSONObject data) {
         String notifyType = data.optString("notifyType");
         if (notifyType != null  && notifyType.equalsIgnoreCase(TesWalletMgr.WALLET_NOTIFICATION)){
-            this.walletMgr.saveToAndroid(this.wiActivity, data.optJSONObject("payload"));
+            if (this.wiActivity != null)
+                this.walletMgr.saveToAndroid(this.wiActivity, data.optJSONObject("payload"));
+
             if (this.listener != null)
                 this.listener.onWalletNotification(data);
         }
@@ -1072,7 +1137,6 @@ public class TesWIApp implements
             if (this.listener != null)
                 this.listener.onRemoteDataNotification(data);
         }
-
 
         try {
             String event_id = data.getString("event_id");
@@ -1086,7 +1150,9 @@ public class TesWIApp implements
     public void onNotificationMsg(JSONObject data) {
         String notifyType = data.optString("notifyType");
         if (notifyType != null  && notifyType.equalsIgnoreCase(TesWalletMgr.WALLET_NOTIFICATION)){
-            this.walletMgr.saveToAndroid(this.wiActivity, data.optJSONObject("payload"));
+            if (this.wiActivity != null)
+                this.walletMgr.saveToAndroid(this.wiActivity, data.optJSONObject("payload"));
+
             if (this.listener != null)
                 this.listener.onWalletNotification(data);
         }
@@ -1095,12 +1161,6 @@ public class TesWIApp implements
                 this.listener.onRemoteNotification(data);
         }
 
-        try {
-            String event_id = data.getString("event_id");
-            this.updateEventAck(event_id, true, null);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
@@ -1133,6 +1193,12 @@ public class TesWIApp implements
     @Override
     public void onApplicationResumed() {
         Log.i(TAG, "@@@ Resume @@@@");
+    }
+
+    @Override
+    public void onActivityDestroyed(Activity activity) {
+        if (activity == this.wiActivity)
+            this.wiActivity = null;
     }
 
 
@@ -1664,7 +1730,7 @@ public class TesWIApp implements
      **/
 
    public void listAcknowledgedLiveEvents(JSONObject params, TesApi.TesApiListener listener) {
-      this.api.call(Request.Method.GET, TES_PATH_LIST_LIVE_EVENTS_ACK, params, listener, true);
+      this.api.call(Request.Method.GET, TES_PATH_LIST_EVENTS_ACK, params, listener, true);
 
    }
 
@@ -1675,7 +1741,7 @@ public class TesWIApp implements
      @param listener the code block to call on successful completion
      **/
    public void listFollowedLiveEvents(JSONObject params, TesApi.TesApiListener listener) {
-       this.api.call(Request.Method.GET, TES_PATH_LIST_LIVE_EVENTS_FOLLOW , params, listener, true);
+       this.api.call(Request.Method.GET, TES_PATH_LIST_EVENTS_FOLLOW, params, listener, true);
    }
 
     /**
@@ -1702,7 +1768,7 @@ public class TesWIApp implements
    public void updateEventAck(String eventId, boolean ack, TesApi.TesApiListener listener) throws JSONException{
        JSONObject params = new JSONObject();
        params.put("ack", ack);
-       String path = String.format(TES_PATH_LIVE_EVENTS_ACK, eventId);
+       String path = String.format(TES_PATH_EVENTS_ACK, eventId);
        this.api.call(Request.Method.PUT, path, params, listener, true);
    }
 
@@ -1720,7 +1786,7 @@ public class TesWIApp implements
    public void updateEventEnacted(String eventId, boolean enacted, TesApi.TesApiListener listener) throws JSONException{
        JSONObject params = new JSONObject();
        params.put("enact", enacted);
-       String path = String.format(TES_PATH_LIVE_EVENTS_ENACTED, eventId);
+       String path = String.format(TES_PATH_EVENTS_ENACTED, eventId);
        this.api.call(Request.Method.PUT, path, params, listener, true);
    }
 
@@ -2012,13 +2078,20 @@ public class TesWIApp implements
        _syncInternalTokens(token, null);
    }
 
+   private boolean _isSame(String a, String b){
+         if (a==null && b==null)
+             return true;
+         if (a==null || b==null)
+             return false;
+         return a.equals(b);
+   }
    private void _syncInternalTokens(String token, Object value) {
         if(token.equals(ACCESS_TOKEN_KEY)){
-            newAccessToken =  (this.api.accessToken == null && value != null) || (!this.api.accessToken.equals(value));
+            newAccessToken =  (this.api.accessToken == null && value != null) || (!_isSame(this.api.accessToken, (String) value));
             this.api.accessToken = (String) value;
         }
         else if (token.equals(ACCESS_AUTH_TYPE)){
-            newAccessAuthType =  (this.api.accessAuthType == null && value != null) || !this.api.accessAuthType.equals(value);
+            newAccessAuthType =  (this.api.accessAuthType == null && value != null) || !_isSame(this.api.accessAuthType, (String) value);
             this.api.accessAuthType = (String) value;
         }
         else if (token.equals(ACCESS_SYSTEM_DEFAULTS)){
@@ -2026,27 +2099,27 @@ public class TesWIApp implements
             this.api.accessSystemDefaults = (JSONObject) value;
         }
         else if (token.equals(DEVICE_TOKEN_KEY)){
-            newDeviceToken =  (this.deviceToken == null && value != null) || !this.deviceToken.equals(value);
+            newDeviceToken =  (this.deviceToken == null && value != null) || !_isSame(this.deviceToken, (String) value);
             this.deviceToken = (String) value;
         }
         else if (token.equals(PUSH_TOKEN_KEY)){
-            newPushToken =  (this.pushToken == null && value != null) || !this.pushToken.equals(value);
+            newPushToken =  (this.pushToken == null && value != null) || !_isSame(this.pushToken,  (String) value);
             this.pushToken = (String) value;
         }
         else if (token.equals(LOCALE_TOKEN_KEY)){
-            newLocaleToken =  (this.localeToken == null && value != null) || !this.localeToken.equals(value);
+            newLocaleToken =  (this.localeToken == null && value != null) || !_isSame(this.localeToken,  (String) value);
             this.localeToken = (String)  value;
         }
         else if (token.equals(TIMEZONE_TOKEN_KEY)){
-            newTimezoneToken =  (this.timezoneToken == null && value != null) || !this.timezoneToken.equals(value);
+            newTimezoneToken =  (this.timezoneToken == null && value != null) || !_isSame(this.timezoneToken,  (String) value);
             this.timezoneToken = (String) value;
         }
         else if (token.equals(LAST_LAUNCHED_VERSION_TOKEN_KEY)){
-            newVersionToken = (this.versionToken == null && value !=null) || !this.versionToken.equals(value);
+            newVersionToken = (this.versionToken == null && value !=null) || !_isSame(this.versionToken,  (String) value);
             this.versionToken = (String) value;
         }
         else if (token.equals(ACCESS_USER_NAME)){
-            newAccessUserName = (this.authUserName == null && value != null) || !this.authUserName.equals(value);
+            newAccessUserName = (this.authUserName == null && value != null) || !_isSame(this.authUserName, (String)  value);
             this.authUserName = (String) value;
         }
 

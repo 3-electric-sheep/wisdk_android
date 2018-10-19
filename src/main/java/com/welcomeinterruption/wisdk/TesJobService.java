@@ -103,7 +103,7 @@ public abstract class TesJobService extends JobService {
     public void startWiApp(TesConfig cfg, boolean fullStarup){
         TesWIApp wi = TesWIApp.manager();
         if (wi == null) {
-            wi = TesWIApp.createManager(getApplicationContext(), new TesWIApp.TesWIAppListener() {
+            wi = TesWIApp.createManager(this, new TesWIApp.TesWIAppListener() {
                 @Override
                 public void onStartupComplete(boolean isAuthorized) {
                     Log.i(TAG, "BG OnStartupComplete");
