@@ -22,9 +22,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.location.Location;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.BuildConfig;
 import android.util.Log;
 
 import com.android.volley.NetworkResponse;
@@ -1025,6 +1025,31 @@ public class TesWIApp implements
 
     }
 
+    JSONObject addHardwareDetails(JSONObject info){
+        try {
+            info.put("platform", "android");
+            info.put("application", BuildConfig.APPLICATION_ID);
+            info.put("platform_version", BuildConfig.VERSION_NAME);
+
+            JSONObject platformInfo = new JSONObject();
+            platformInfo.put("manufacturer", Build.MANUFACTURER);
+            platformInfo.put("model",Build.MODEL);
+            platformInfo.put("brand",Build.BRAND);
+            platformInfo.put("sdk",Build.VERSION.SDK_INT );
+            platformInfo.put("release", Build.VERSION.RELEASE);
+            platformInfo.put("build_type", BuildConfig.BUILD_TYPE);
+            platformInfo.put("location_permission", this.locPermission);
+            platformInfo.put("location_type", this.locType);
+            info.put("platform_info", platformInfo);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+
+        return info;
+    }
+
     //-----------------------
     // Interface calls
     //----------------------
@@ -1058,6 +1083,7 @@ public class TesWIApp implements
 
         final TesDevice dev = this._fillDeviceFromLocation(locInfo);
         JSONObject parameters = dev.toDictionary();
+        parameters = addHardwareDetails(parameters);
 
         TesApi.TesApiListener callback = new TesApi.TesApiListener() {
             @Override
