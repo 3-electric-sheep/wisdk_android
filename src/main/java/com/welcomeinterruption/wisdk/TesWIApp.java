@@ -318,7 +318,7 @@ public class TesWIApp implements
     /**
      * API createManager for dealing with all REST based api calls
      **/
-    public @NonNull
+    public @Nullable
     TesApi api;
 
     /**
@@ -586,6 +586,21 @@ public class TesWIApp implements
     public void setActivity(Activity activity){
         this.wiActivity = activity;
     }
+
+    /**
+     * setup the test / prod environement.
+     *
+     * this should be called prior to calling start.
+     *
+     * @param testMode = true run test / false run prod
+     */
+
+    public void setTestEnvironment(boolean testMode){
+        this.config.environment = (testMode) ? TesConfig.ENV_TEST : TesConfig.ENV_PROD;
+        if (this.api!=null)
+            this.api.setEndpoint(this.config.getEnvServer());
+    };
+
 
     /**
      * Start the framework. This initialises location services, boots up the push createManager and authenticates with the wi server
@@ -1489,7 +1504,7 @@ public class TesWIApp implements
 
        if (!params.has("provider_id")){
            try {
-               params.put("provider_id", this.config.providerKey);
+               params.put("provider_id", this.config.getEnvProvider());
            } catch (JSONException e) {
                e.printStackTrace();
            }

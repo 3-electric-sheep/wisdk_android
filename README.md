@@ -103,7 +103,7 @@ dependencies {
     implementation "com.google.firebase:firebase-messaging:17.3.1"
     
     // the wi SDK    
-    implementation 'com.github.3-electric-sheep:wisdk_android:1.0.6'
+    implementation 'com.github.3-electric-sheep:wisdk_android:1.0.7'
 }
 	
 ```
@@ -241,14 +241,16 @@ import com.welcomeinterruption.wisdk.TesConfig;
 public class MainActivity extends AppCompatActivity  {
      private static final String TAG = MainActivity.class.getSimpleName();
      private static final String PROVIDER_KEY = "5b53e675ec8d831eb30242d3";
-     
-     @Override
-     protected void onCreate(Bundle savedInstanceState) {
+  
+    static final String PROD_PROVIDER_KEY = "xxxxxxxxxxxxxxxxxxxxxxxx"; // <- provided by us
+    static final String TEST_PROVIDER_KEY = "5b53e675ec8d831eb30242d3"; // <- provided by us
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        
+
         TesWIApp app = TesWIApp.createManager(this);
-        TesConfig config = new TesConfig(PROVIDER_KEY);
+        TesConfig config = new TesConfig(PROD_PROVIDER_KEY, TEST_PROVIDER_KEY);
 
         if (BuildConfig.DEBUG) {
             config.environment = TesConfig.ENV_TEST;
@@ -257,19 +259,7 @@ public class MainActivity extends AppCompatActivity  {
             config.environment = TesConfig.ENV_PROD;
         }
 
-        config.authAutoAuthenticate = true;
         config.deviceTypes = TesConfig.deviceTypeFCM | TesConfig.deviceTypePassive;
-        config.fcmSenderId = "955521662890"; // from the firebird console
-        try {
-            config.authCredentials = new JSONObject();
-            config.authCredentials.put("anonymous_user", true);
-        }
-        catch (JSONException e){
-            Log.e(TAG, "Failed to create authentication details: "+e.getLocalizedMessage());
-        }
-
-        config.testPushProfile = "wisdk-example-fcm";
-        config.pushProfile = "wisdk-example-fcm";
 
         if (!app.checkPlayServices(this)) {
             Log.i(TAG, "Play service not available or out of date - location monitoring will not work");
@@ -277,8 +267,22 @@ public class MainActivity extends AppCompatActivity  {
 
         app.listener = this;
         app.start(config);
-     }
+
+    }       
 }
+```
+
+**IMPORTANT** You need to set the environment prior to calling start as this determines the following :-
+
+ * endpoint
+ * provider
+ * push profile (used to select the correct FCM project id or APN certificate
+
+If you need to change the environment after calling start do it via the TesWiApp setTestEnvironment call:-
+ 
+```java
+  app.setTestEnvironment(true); // for test mode
+  app.setTestEnvironment(false); // for prod mode
 ```
 
 ### configure
@@ -289,9 +293,11 @@ interact with the device and Wi Servers.
 Typically a config object is created at app startup and then passed to the TESWIApp object start method. The config object can set the
 sensitivty of geo regions monitored, how users and devices are created and the type of notification mechanism that should be used by the sdk
 
+By default the config object has good defaults and usually the only thing needed to be set is the type of device type notification to set (ie. the deviceTypes field) 
+
 
 ```java
-     TesConfig config = new TesConfig(PROVIDER_KEY);
+     TesConfig config = new TesConfig(PROD_PROVIDER_KEY, TEST_PROVIDER_KEY);
 
      config.authAutoAuthenticate = true;
      config.deviceTypes = TesConfig.deviceTypeFCM | TesConfig.deviceTypePassive;
@@ -303,8 +309,6 @@ sensitivty of geo regions monitored, how users and devices are created and the t
      catch (JSONException e){
          Log.e(TAG, "Failed to create authentication details: "+e.getLocalizedMessage());
      }
-     config.testPushProfile = "wisdk-example-fcm"; // test profile name (allocted by 3es)
-     config.pushProfile = "wisdk-example-fcm"; // prod profile name (allocated by 3es
 
 ```
 
@@ -313,8 +317,8 @@ configuration. This will ensure that the fcm registration token gets generatewd 
 
 ```java
 
-        TesConfig config = new TesConfig(PROVIDER_KEY);
-
+        TesConfig config = new TesConfig(PROD_PROVIDER_KEY, TEST_PROVIDER_KEY);
+        
         config.authAutoAuthenticate = true;
         config.deviceTypes = TesConfig.deviceTypeFCM | TesConfig.deviceTypePassive;
         config.fcmSenderId = "79721494129"; // <-- from the firebird console for your project under cloud messaging
@@ -335,7 +339,7 @@ If interfacing to an external system you can also enter
 * program_attr - a dictionary of name value pairs - only available if a program is setup for a provider
 
 ```java
-     TesConfig config = new TesConfig(PROVIDER_KEY);
+     TesConfig config = TesConfig(PROD_PROVIDER_KEY, TEST_PROVIDER_KEY);
 
      try {
          config.authCredentials = new JSONObject();

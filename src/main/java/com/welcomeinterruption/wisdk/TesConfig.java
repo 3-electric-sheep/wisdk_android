@@ -38,10 +38,10 @@ public class TesConfig implements Parcelable, Cloneable {
     public static final String ENV_TEST = "test";
 
     public static final String PROD_SERVER = "https://api.3-electric-sheep.com";
-    public static final String PROD_PUSH_PROFILE = "snapitup_prod";
-
     public static final String TEST_SERVER = "https://testapi.3-electric-sheep.com";
-    public static final String TEST_PUSH_PROFILE = "snapitup_dev";
+
+    public static final String PROD_PUSH_PROFILE = "<PROD_PROFILE>";
+    public static final String TEST_PUSH_PROFILE = "<TEST_PROFILE>";
 
     public static final String WALLET_OFFER_CLASS = "wi_offer_class";
     public static final String WALLET_PROFILE = "email";
@@ -117,7 +117,9 @@ public class TesConfig implements Parcelable, Cloneable {
     */
 
     public String environment;
+
     public String providerKey;
+    public String testProviderKey;
 
     public long memCacheSize;
     public long diskCacheSize;
@@ -185,14 +187,17 @@ public class TesConfig implements Parcelable, Cloneable {
     public String fcmSenderId;
 
 
-    public TesConfig(String providerKey) {
+    public TesConfig(String providerKey, String testProviderKey) {
          // system config
-        this.providerKey = providerKey;
         this.environment = ENV_PROD;
+        this.providerKey = providerKey;
         this.server = PROD_SERVER;
         this.pushProfile = PROD_PUSH_PROFILE;
+
+        this.testProviderKey = testProviderKey;
         this.testServer = TEST_SERVER;
         this.testPushProfile = TEST_PUSH_PROFILE;
+
         this.walletOfferClass = WALLET_OFFER_CLASS;
         this.memCacheSize = MEM_CACHE_SIZE;
         this.diskCacheSize = DISK_CACHE_SIZE;
@@ -207,8 +212,14 @@ public class TesConfig implements Parcelable, Cloneable {
         this.logLocInfo = false;
 
         // auth config
-        this.authAutoAuthenticate = false;
-        this.authCredentials = null;
+        this.authAutoAuthenticate = true;
+        try {
+            this.authCredentials = new JSONObject();
+            this.authCredentials.put("anonymous_user", true);
+        }
+        catch (JSONException e){
+            this.authCredentials = null;
+        }
 
         //device config
         this.deviceTypes = deviceTypeFCM;
@@ -240,12 +251,13 @@ public class TesConfig implements Parcelable, Cloneable {
     }
 
     public TesConfig(){
-        this("");
+        this("", "");
     }
 
     protected TesConfig(Parcel in) {
         environment = in.readString();
         providerKey = in.readString();
+        testProviderKey = in.readString();
         memCacheSize = in.readLong();
         diskCacheSize = in.readLong();
         server = in.readString();
@@ -305,6 +317,10 @@ public class TesConfig implements Parcelable, Cloneable {
         return (this.environment.equals(ENV_PROD)) ? this.pushProfile : this.testPushProfile;
     }
 
+    public String getEnvProvider() {
+        return (this.environment.equals(ENV_PROD)) ? this.providerKey : this.testProviderKey;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -313,7 +329,10 @@ public class TesConfig implements Parcelable, Cloneable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(environment);
+
         dest.writeString(providerKey);
+        dest.writeString(testProviderKey);
+
         dest.writeLong(memCacheSize);
         dest.writeLong(diskCacheSize);
         dest.writeString(server);
@@ -356,6 +375,7 @@ public class TesConfig implements Parcelable, Cloneable {
         return "TesConfig{" +
                 "environment='" + environment + '\'' +
                 ", providerKey='" + providerKey + '\'' +
+                ", testProviderKey=" + testProviderKey +  '\'' +
                 ", memCacheSize=" + memCacheSize +
                 ", diskCacheSize=" + diskCacheSize +
                 ", server='" + server + '\'' +
@@ -396,6 +416,7 @@ public class TesConfig implements Parcelable, Cloneable {
         JSONObject json = new JSONObject();
         json.put("environment", this.environment);
         json.put("providerKey", this.providerKey);
+        json.put("testProviderKey", this.testProviderKey);
         json.put("memCacheSize", this.memCacheSize);
         json.put("diskCacheSize", this.diskCacheSize);
         json.put("server", this.server);
@@ -437,6 +458,7 @@ public class TesConfig implements Parcelable, Cloneable {
         JSONObject json = new JSONObject(jsonString);
         this.environment = json.optString("environment", this.environment);
         this.providerKey = json.optString("providerKey", this.providerKey);
+        this.testProviderKey = json.optString("testProviderKey", this.testProviderKey);
         this.memCacheSize = json.optLong("memCacheSize", this.memCacheSize);
         this.diskCacheSize = json.optLong("diskCacheSize", this.diskCacheSize);
         this.server = json.optString("server",this. server);
