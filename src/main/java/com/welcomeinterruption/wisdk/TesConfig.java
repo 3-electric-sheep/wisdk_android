@@ -186,6 +186,8 @@ public class TesConfig implements Parcelable, Cloneable {
     /** FCM specific bits ***/
     public String fcmSenderId;
 
+    public boolean noPermissionDialog;
+
 
     public TesConfig(String providerKey, String testProviderKey) {
          // system config
@@ -248,6 +250,8 @@ public class TesConfig implements Parcelable, Cloneable {
         this.locationSendToSettings = true;
 
         this.fcmSenderId = null;
+
+        this.noPermissionDialog = false;
     }
 
     public TesConfig(){
@@ -293,6 +297,8 @@ public class TesConfig implements Parcelable, Cloneable {
         geoLoiteringDelay = in.readInt();
 
         fcmSenderId = in.readString();
+        noPermissionDialog = in.readByte() != 0;
+
     }
 
     public static final Creator<TesConfig> CREATOR = new Creator<TesConfig>() {
@@ -368,6 +374,7 @@ public class TesConfig implements Parcelable, Cloneable {
         dest.writeInt(geoLoiteringDelay);
 
         dest.writeString(fcmSenderId);
+        dest.writeByte((byte) (noPermissionDialog ? 1 : 0));
     }
 
     @Override
@@ -409,6 +416,7 @@ public class TesConfig implements Parcelable, Cloneable {
                 ", geoInitialTrigger=" + this.geoInitialTrigger +
                 ", geoLoiteringDelay=" +  this.geoLoiteringDelay +
                 ", fcmSenderId=" + this.fcmSenderId +
+                ", noPermissionDialog=" + this.noPermissionDialog +
         '}';
     }
 
@@ -450,6 +458,7 @@ public class TesConfig implements Parcelable, Cloneable {
         json.put("geoInitialTrigger", this.geoInitialTrigger);
         json.put("geoLoiteringDelay",  this.geoLoiteringDelay);
         json.put("fcmSenderId", this.fcmSenderId);
+        json.put("noPermissionDialog", this.noPermissionDialog);
 
         return json;
     }
@@ -500,6 +509,7 @@ public class TesConfig implements Parcelable, Cloneable {
         this.geoLoiteringDelay = json.optInt("geoLoiteringDelay",  this.geoLoiteringDelay);
 
         this.fcmSenderId = json.optString("fcmSenderId", this.fcmSenderId);
+        this.noPermissionDialog = json.optBoolean("noPermissionDialog", this.noPermissionDialog);
 
 
     }

@@ -20,6 +20,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.location.Location;
 import android.os.Build;
@@ -37,10 +38,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 
 
@@ -862,11 +866,8 @@ public class TesWIApp implements
 
         final String[] permissions = {TesConfig.LOCATION_PERMISSION};
         String rationale = this.config.locationPermissionRationale;
-        Permissions.Options options = new Permissions.Options()
-                .setRationaleDialogTitle("Info")
-                .setSettingsDialogTitle("Warning");
 
-        Permissions.check(this.wiCtx, permissions, rationale, options, new PermissionHandler() {
+        PermissionHandler ph = new PermissionHandler() {
             @Override
             public void onGranted() {
                 TesWIApp.this.locPermission = "authorized";
@@ -900,7 +901,39 @@ public class TesWIApp implements
                 }
 
             }
-        });
+        };
+
+        if (this.config.noPermissionDialog) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                ph.onGranted();
+                Log.i(TAG, "Android version < 23");
+            } else {
+                Set<String> permissionsSet = new LinkedHashSet<>();
+                Collections.addAll(permissionsSet, permissions);
+                boolean allPermissionProvided = true;
+                for (String aPermission : permissionsSet) {
+                    if (this.wiCtx.checkSelfPermission(aPermission) != PackageManager.PERMISSION_GRANTED) {
+                        allPermissionProvided = false;
+                        break;
+                    }
+                }
+
+                if (allPermissionProvided) {
+                    ph.onGranted();
+                    Log.i(TAG, "Permission(s) lready granted.");
+
+                } else {
+                    ph.onDenied(this.wiCtx, new ArrayList<>(permissionsSet));
+                }
+            }
+        }
+        else {
+            Permissions.Options options = new Permissions.Options()
+                    .setRationaleDialogTitle("Info")
+                    .setSettingsDialogTitle("Warning");
+
+            Permissions.check(this.wiCtx, permissions, rationale, options, ph);
+        }
 
     }
 
