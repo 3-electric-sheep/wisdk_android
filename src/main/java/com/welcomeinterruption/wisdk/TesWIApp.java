@@ -300,6 +300,12 @@ public class TesWIApp implements
     private Context wiCtx;
 
     /**
+     * initial notofication object
+     */
+    public @Nullable
+    JSONObject startNotification;
+
+    /**
      * class level listener
      */
     public @Nullable
@@ -459,10 +465,12 @@ public class TesWIApp implements
     private void _init(Context context, @Nullable Activity activity, @Nullable TesWIAppListener listener)
     {
         this.wiCtx = context;
-        this.wiActivity = activity;
 
         // only used for permission resolution and wallet saving
-        this.wiActivity = null;
+        this.wiActivity = activity;
+
+        // stores any start up notification
+        this.startNotification = null;
 
         this.listener = null;
         this.config = null;
@@ -607,6 +615,49 @@ public class TesWIApp implements
 
 
     /**
+     * Check for notification and if found saves it for later processing
+     *
+     * Checks for notification and stashes it for later if found. It can be called prior to start.
+     * Android es and combo data/alert notification into the startup intentes activity intent extras.
+     *
+     * this call should be made in the start up activity, prior to calling start.
+     *
+     * @param activity: the start up acttivty to check for.
+     * @returns THe notification object if it was in the extras.
+     *
+     * NOTE: if it finds something in the getExtras it sets startNotification and returns the object at the same
+     * time. If there is nothing it getExtras it returns null regardless of the contents of startNotification
+     *
+     */
+    public JSONObject checkAndSaveNotification(Activity activity){
+        // If a notification message is tapped, any data accompanying the notification
+        // message is available in the intent extras. In this sample the launcher
+        // intent is fired when the notification is tapped, so any accompanying data would
+        // be handled here. If you want a different intent fired, set the click_action
+        // field of the notification message to the desired intent. The launcher intent
+        // is used when no click_action is specified.
+        //
+        // Handle possible data accompanying notification message.
+        // [START handle_data_extras]
+        if (activity != null){
+            Intent intent = activity.getIntent();
+            if (intent.getExtras() != null) {
+
+                TesDictionary dict = new TesDictionary();
+                Log.d(TAG, "Launched from notification message");
+                for (String key : intent.getExtras().keySet()) {
+                    Object value = intent.getExtras().get(key);
+                    Log.d(TAG, "Key: " + key + " Value: " + value);
+                    dict.put(key, value);
+                }
+                this.startNotification = new JSONObject(dict);
+                return this.startNotification;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Start the framework. This initialises location services, boots up the push createManager and authenticates with the wi server
      *
      * @param config : the configuration object for this app
@@ -623,9 +674,16 @@ public class TesWIApp implements
                 deferOnComplete = true;
                 this._autoAuthenticate(true);
             }
-            this.check_for_notification();
+
+            this.processStartNotification();
+
+            // see if we have got a permission change since start and now
+            if (!this.locPermission.equals("authorized")){
+                this._checkPermissionAndStartMonitoring(true);
+            }
 
             this.getLastKnownLocation();
+
             if (!deferOnComplete && this.listener != null)
                 this.listener.onStartupComplete(this.api.isAuthorized());
 
@@ -671,14 +729,14 @@ public class TesWIApp implements
         }
 
         // see if we have the correct location permission and start monitoring
-        this._checkPermissionAndStartMonitoring();
+        this._checkPermissionAndStartMonitoring(this.config.noPermissionDialog);
 
         // register lifecycle if we are an activity and ensure playservices is cool
         if (this.wiActivity != null){
             this.wiActivity.getApplication().registerActivityLifecycleCallbacks(new TesActivityLifecycleHandler(this));
         }
 
-        this.check_for_notification();
+        this.processStartNotification();
 
         TesWIApp.setInitDone();
 
@@ -688,8 +746,9 @@ public class TesWIApp implements
         return this.api.isAuthorized();
     }
 
-    private void check_for_notification(){
-        // If a notification message is tapped, any data accompanying the notification
+    private void processStartNotification(){
+        // If a notification message is tapped, any data accompany
+        // ing the notification
         // message is available in the intent extras. In this sample the launcher
         // intent is fired when the notification is tapped, so any accompanying data would
         // be handled here. If you want a different intent fired, set the click_action
@@ -698,40 +757,32 @@ public class TesWIApp implements
         //
         // Handle possible data accompanying notification message.
         // [START handle_data_extras]
-        if (this.wiActivity != null){
-            Intent intent = this.wiActivity.getIntent();
-            if (intent.getExtras() != null) {
-
-                TesDictionary dict = new TesDictionary();
-                Log.d(TAG, "Launched from notification message");
-                for (String key : intent.getExtras().keySet()) {
-                    Object value = intent.getExtras().get(key);
-                    Log.d(TAG, "Key: " + key + " Value: " + value);
-                    dict.put(key, value);
-                }
-                JSONObject data = new JSONObject(dict);
-
-                String notifyType = data.optString("notifyType");
-                if (notifyType != null && notifyType.equalsIgnoreCase(TesWalletMgr.WALLET_NOTIFICATION)) {
-                    this.walletMgr.saveToAndroid(this.wiActivity, data.optJSONObject("payload"));
-                    if (this.listener != null)
-                        this.listener.onWalletNotification(data);
-                } else {
-                    if (this.listener != null)
-                        this.listener.onRemoteDataNotification(data);
-                }
-
-                try {
-                    String event_id = data.getString("event_id");
-                    this.updateEventAck(event_id, true, null);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-            }
+        if (this.wiActivity != null && this.startNotification == null) {
+            this.checkAndSaveNotification(this.wiActivity);
         }
 
+        if (this.startNotification != null){
+            String notifyType = this.startNotification.optString("notifyType");
+            if (notifyType != null && notifyType.equalsIgnoreCase(TesWalletMgr.WALLET_NOTIFICATION)) {
+                this.walletMgr.saveToAndroid(this.wiActivity, this.startNotification.optJSONObject("payload"));
+                if (this.listener != null)
+                    this.listener.onWalletNotification(this.startNotification);
+            } else {
+                if (this.listener != null)
+                    this.listener.onRemoteDataNotification(this.startNotification);
+            }
+
+            try {
+                String event_id = this.startNotification.optString("event_id");
+                if (event_id != null && this.isAuthorized()) {
+                    this.updateEventAck(event_id, true, null);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
     }
+
     /**
      * Start the app but only doing enough to kick the api so we can make network calls. This
      * is typically called when a pending intent starts
@@ -861,7 +912,7 @@ public class TesWIApp implements
      * Check for lcoation permission and call the permission handler on result
      */
 
-    private void _checkPermissionAndStartMonitoring() {
+    private void _checkPermissionAndStartMonitoring(boolean noPermissionDialog) {
         // permission flags : 'authorized' | 'denied' | 'restricted' | 'undetermined'
 
         final String[] permissions = {TesConfig.LOCATION_PERMISSION};
@@ -903,7 +954,7 @@ public class TesWIApp implements
             }
         };
 
-        if (this.config.noPermissionDialog) {
+        if (noPermissionDialog) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 ph.onGranted();
                 Log.i(TAG, "Android version < 23");
@@ -944,6 +995,7 @@ public class TesWIApp implements
         if (!this.locPermission.equals("authorized")){
             return;
         }
+
 
         if (this.isMonitoring){
             return;
@@ -1002,26 +1054,27 @@ public class TesWIApp implements
             return;
         }
 
-        TesWIApp.this.locMgr.getLastKnownLocation(new OnCompleteListener<Location>() {
-            @Override
-            public void onComplete(@NonNull Task<Location> task) {
-                if (task.isSuccessful() && task.getResult() != null) {
-                    Location loc = task.getResult();
-                    TesLocationInfo lastLoc = new TesLocationInfo(loc, false);
-                    try {
-                        TesWIApp.this._sendNewLocation(lastLoc, null, false);
-                    } catch (JSONException e) {
+        if (this.locMgr != null) {
+            this.locMgr.getLastKnownLocation(new OnCompleteListener<Location>() {
+                @Override
+                public void onComplete(@NonNull Task<Location> task) {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        Location loc = task.getResult();
+                        TesLocationInfo lastLoc = new TesLocationInfo(loc, false);
+                        try {
+                            TesWIApp.this._sendNewLocation(lastLoc, null, false);
+                        } catch (JSONException e) {
+                            if (TesWIApp.this.listener != null)
+                                TesWIApp.this.listener.onError("getLastKnownLocation", e);
+                        }
+                    } else {
+                        Exception e = task.getException();
                         if (TesWIApp.this.listener != null)
                             TesWIApp.this.listener.onError("getLastKnownLocation", e);
                     }
                 }
-                else {
-                    Exception e = task.getException();
-                    if (TesWIApp.this.listener != null)
-                        TesWIApp.this.listener.onError("getLastKnownLocation", e);
-                }
-            }
-        });
+            });
+        }
 
     };
 
@@ -1340,7 +1393,7 @@ public class TesWIApp implements
                 listener.onOtherError(e);
             }
             if (this.listener != null) {
-                this.listener.onError("onGeofenceUpdate", e);
+                this.listener.onError("onLoctionUpdate", e);
             }
         }
     }
