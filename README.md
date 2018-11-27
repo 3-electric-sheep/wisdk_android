@@ -219,6 +219,7 @@ certificates and API keys. This will require us to have your clients APNS push c
 part of the WiSDK configuration.
 3. Start Integrating the WiSDK
 
+
 ## WiSDK integration
 
 Typically integration is done as follows:-
@@ -399,6 +400,69 @@ Both of these calls make an async network call and will return a JSON result dic
 ```
 
 NOTE: these calls will fail unless you have successfully authenticated with the system
+
+### Advanced setup
+With android apps its best to initialise the WiApp in the startup activtiy. This is necessary to ensure that android gets all the necessary startup infomraion to be able to process notifications and other startup events.
+
+It is still possible to use the wiSDK in apps where you need to confiure the SDK in a place other than the startupActivity of an app.. It is also possible to customise the wiSDK so it doesn't display the permission dialogs. The following examples explain what you need to do.
+
+If you want to defer your initialisation you can do the following in your code
+
+```java
+
+    // startup activity (ie. splash screen or first activity to display)
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        TesWIApp app = TesWIApp.createManager(this); // First call creates a sigleton.
+        app.checkAndSaveNotification(this);  // this will extract any notification details from the start activity
+    }
+    
+    // later in the main activity
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+       
+        final TesWIApp app = TesWIApp.manager(); // gets previously creaed instance
+        TesConfig config = new TesConfig(PROD_PROVIDER_KEY, TEST_PROVIDER_KEY);
+
+        if (BuildConfig.DEBUG) {
+            config.environment = TesConfig.ENV_TEST;
+        }
+        else {
+            config.environment = TesConfig.ENV_PROD;
+        }
+
+        config.deviceTypes = TesConfig.deviceTypeFCM | TesConfig.deviceTypePassive;
+
+        if (!app.checkPlayServices(this)) {
+            Log.i(TAG, "Play service not available or out of date - location monitoring will not work");
+        }
+
+        app.listener = this;
+        app.start(config);
+    }
+
+```
+
+**NOTE**: it is **extremely important** to ensure that the startup activity extra info is saved using the checkAndSaveNotification call if you don't plan on calling the start in the startup activity.  The start activity must be passed to the start method or set using the checkAndSaveNotification methods as this is how Android tells us we have been started due a remote notification.
+
+If you want to display location permission yourself, you just need to set the noPermissionDialog config option as following:-
+
+```java
+     TesConfig config = new TesConfig(PROD_PROVIDER_KEY, TEST_PROVIDER_KEY);
+     config.noPermissionDialog = true;                                       
+```
+
+
+**NOTE** its fine to call TesWIApp.manager() as many times as you like as it will always return a singleton object, but you should try to call start just once, preferably in the main activity after you have asked for location permission. 
+
+**NOTE** if you really have to , you can call start more than once as it detects it has been initialised before and just carries on. In fact if you app is started due to a broadcast meesage, start will be called again as android executes your main activity.
+
+
+
 
 ### Listeners
 
