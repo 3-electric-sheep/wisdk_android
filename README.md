@@ -103,7 +103,7 @@ dependencies {
     implementation "com.google.firebase:firebase-messaging:17.3.1"
     
     // the wi SDK    
-    implementation 'com.github.3-electric-sheep:wisdk_android:1.0.7'
+    implementation 'com.github.3-electric-sheep:wisdk_android:1.1.0'
 }
 	
 ```
