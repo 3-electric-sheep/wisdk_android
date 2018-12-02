@@ -602,7 +602,7 @@ public class TesWIApp implements
     /**
      * setup the test / prod environement.
      *
-     * this should be called prior to calling start.
+     * this should ONLY be called after  calling start as it assumes the confi object is up and running
      *
      * @param testMode = true run test / false run prod
      */
@@ -611,6 +611,13 @@ public class TesWIApp implements
         this.config.environment = (testMode) ? TesConfig.ENV_TEST : TesConfig.ENV_PROD;
         if (this.api!=null)
             this.api.setEndpoint(this.config.getEnvServer());
+
+        try {
+            this.config.saveConfig(this.wiCtx);
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to save configuration due to invalid JSON object");
+            e.printStackTrace();
+        }
     };
 
 
