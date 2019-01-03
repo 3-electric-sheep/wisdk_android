@@ -780,7 +780,7 @@ public class TesWIApp implements
             }
 
             try {
-                String event_id = this.startNotification.optString("event_id");
+                String event_id = this.startNotification.optString("event_id", null);
                 if (event_id != null && this.isAuthorized()) {
                     this.updateEventAck(event_id, true, null);
                 }
