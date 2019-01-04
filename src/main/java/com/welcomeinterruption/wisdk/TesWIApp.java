@@ -20,6 +20,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.location.Location;
@@ -978,7 +979,7 @@ public class TesWIApp implements
 
                 if (allPermissionProvided) {
                     ph.onGranted();
-                    Log.i(TAG, "Permission(s) lready granted.");
+                    Log.i(TAG, "Permission(s) already granted.");
 
                 } else {
                     ph.onDenied(this.wiCtx, new ArrayList<>(permissionsSet));
@@ -1134,10 +1135,22 @@ public class TesWIApp implements
     }
 
     JSONObject addHardwareDetails(JSONObject info){
+        String version = "";
+        String appId = "";
+        if (this.wiCtx != null) {
+            try {
+                PackageInfo pInfo = this.wiCtx.getPackageManager().getPackageInfo(this.wiCtx.getPackageName(), 0);
+                version = pInfo.versionName;
+                appId = pInfo.packageName;
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
         try {
             info.put("platform", "android");
-            info.put("application", BuildConfig.APPLICATION_ID);
-            info.put("platform_version", BuildConfig.VERSION_NAME);
+            info.put("application",appId);
+            info.put("platform_version",version);
 
             JSONObject platformInfo = new JSONObject();
             platformInfo.put("manufacturer", Build.MANUFACTURER);
